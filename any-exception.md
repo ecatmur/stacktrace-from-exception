@@ -10,8 +10,9 @@ where previously we had a backtrace and a core file, now all we've got is the ty
 
 Can we have both? You might say, why not capture information in the exception object? And yes, Boost.Exception allows that, but you're
 paying a heavy cost in case the exception is expected and will be caught and the information discarded. And that only works if everyone 
-uses Boost.Exception to augment their throw sites; we want to be able to control this from the catch site, i.e. the catch-all block in
-`main()`.
+uses Boost.Exception to augment their throw sites; we want to be able to control this from the catch site, e.g. the catch-all block in
+`main()`, or at the root of a handler for a client request in a server, allowing the server to return an error to that client and keep 
+running. (Say, like other languages have no problem with.)
 
 But maybe this is possible, with a lot of hacking and a little undefined (and platform-specific) behavior. I'll assume you're all
 familiar with how [exception handling works in the Itanium ABI](http://refspecs.linuxbase.org/abi-eh-1.21.html#imp-catch), so let's 
@@ -31,4 +32,6 @@ behaves like it. So, all we need to do is:
 * override `__do_catch` to execute our code and return `true`,
 * suppress generation of the typeinfo for a type and generate our own instead!
 
-Oh, and one other problem - by supplying our own type in the catch specification we're breaking the down-cast to `std::exception`
+I'm not suggesting that you should use this - although I've used it successfully - but I think it does demonstrate a need for more 
+information available - on request - at a catch site; and also that this is eminently implementable, at least on the Itanium ABI. 
+(I would appreciate pointers on how to implement this within the Windows exception handling system.) Anyone feel like writing a paper?
