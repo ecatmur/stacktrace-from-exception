@@ -1,0 +1,19 @@
+$ g++-8 -std=c++2a -ggdb3 prog3.c++ && ./a.out
+0x00007fa8e654c07a in __GI___waitpid (pid=10509, stat_loc=stat_loc@entry=0x7fffdada9980, options=options@entry=0) at ../sysdeps/unix/sysv/linux/waitpid.c:29
+29      ../sysdeps/unix/sysv/linux/waitpid.c: No such file or directory.
+#0  0x00007fa8e654c07a in __GI___waitpid (pid=10509, stat_loc=stat_loc@entry=0x7fffdada9980, options=options@entry=0) at ../sysdeps/unix/sysv/linux/waitpid.c:29
+#1  0x00007fa8e64c4fbb in do_system (line=<optimized out>) at ../sysdeps/posix/system.c:148
+#2  0x0000000000401f93 in AnyExceptionTypeInfo::__do_catch (this=0x403128 <typeinfo for AnyException>, thr_type=0x4031e8 <typeinfo for std::bad_optional_access>, thr_obj=0x7fffdada9b10, outer=1) at prog3.c++:42
+#3  0x00007fa8e6b01d65 in ?? () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#4  0x00007fa8e6b02657 in __gxx_personality_v0 () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#5  0x00007fa8e686096b in _Unwind_RaiseException () from /lib/x86_64-linux-gnu/libgcc_s.so.1
+#6  0x00007fa8e6b02ca7 in __cxa_throw () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#7  0x000000000040236f in std::__throw_bad_optional_access () at /usr/include/c++/8/optional:99
+#8  0x00000000004025a9 in std::optional<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >::value() & (this=0x7fffdadaa0d0) at /usr/include/c++/8/optional:1265
+#9  0x0000000000401fc5 in Greeter::result (this=0x7fffdadaa0d0) at prog3.c++:52
+#10 0x0000000000402056 in main () at prog3.c++:65
+Saved corefile core.10508
+[Inferior 1 (process 10508) detached]
+Hello, Did some cleanup
+Exception St19bad_optional_access: bad optional access
+1

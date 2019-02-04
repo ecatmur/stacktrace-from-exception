@@ -1,0 +1,19 @@
+$ g++ -std=c++2a -ggdb3 prog1.c++ && ./a.out
+0x00007f270734c07a in __GI___waitpid (pid=10411, stat_loc=stat_loc@entry=0x7fffdf8e87a0, options=options@entry=0) at ../sysdeps/unix/sysv/linux/waitpid.c:29
+29      ../sysdeps/unix/sysv/linux/waitpid.c: No such file or directory.
+#0  0x00007f270734c07a in __GI___waitpid (pid=10411, stat_loc=stat_loc@entry=0x7fffdf8e87a0, options=options@entry=0) at ../sysdeps/unix/sysv/linux/waitpid.c:29
+#1  0x00007f27072c4fbb in do_system (line=<optimized out>) at ../sysdeps/posix/system.c:148
+#2  0x0000000000401b58 in <lambda()>::operator()(void) const (__closure=0x0) at prog1.c++:7
+#3  0x0000000000401b72 in <lambda()>::_FUN(void) () at prog1.c++:9
+#4  0x00007f2707902a46 in ?? () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#5  0x00007f2707902a81 in std::terminate() () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#6  0x00007f2707902cb4 in __cxa_throw () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#7  0x0000000000401e49 in std::__throw_bad_optional_access () at /usr/include/c++/8/optional:99
+#8  0x0000000000402083 in std::optional<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >::value() & (this=0x7fffdf8e8a20) at /usr/include/c++/8/optional:1265
+#9  0x0000000000401baf in Greeter::result (this=0x7fffdf8e8a20) at prog1.c++:17
+#10 0x0000000000401c3e in main () at prog1.c++:29
+[Inferior 1 (process 10410) detached]
+terminate called after throwing an instance of 'std::bad_optional_access'
+  what():  bad optional access
+Hello, Aborted (core dumped)
+134
