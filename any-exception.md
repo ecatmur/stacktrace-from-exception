@@ -20,17 +20,20 @@ just consider the challenge. More or less, we want pass 1 to succeed, so that `t
 destructors. However, we also want to execute a chunk of user-defined code before pass 2 begins. It turns out there's one (and only 
 one, as far as I'm aware) hookable step:
 https://github.com/gcc-mirror/gcc/blob/41d6b10e96a1de98e90a7c0378437c3255814b16/libstdc%2B%2B-v3/libsupc%2B%2B/eh_personality.cc#L228
-Great! - the x86 EH personality calls a method (a virtual method, to boot) on the catch specification's typeinfo. So, all we need is to 
-create a type with a custom typeinfo -
+Great! - the x86 EH personality calls a virtual method, `__do_catch`, on the catch specification's typeinfo to determine whether the 
+catch specification can handle the exception. So, all we need is to create a type with a custom typeinfo -
 
 Wait, what?
 
-Well, under the Itanium ABI, typeinfo objects are stored in `.rodata`; in addition to the obvious stuff like the (mangled) name of the 
-type, the compiler also emits a pointer to a `std::typeinfo`-like type. But it doesn't have to, it can be a distinct  type that just 
-behaves like it. So, all we need to do is:
+Well, under the Itanium ABI, typeinfo objects are polymorphic, which means they have a vtable pointer, which doesn't have to point to 
+the `std::typeinfo` vtable, it can point to any vtable with the same layout. They live in `.rodata`, so in order to override the vtable 
+pointer we have to suppress generation of the typeinfo and supply our own, in assembler. Typeinfo - being RTTI - gets emitted along 
+with the vtable when the first virtual member function is defined, so we need to declare a dummy virtual member function and omit to 
+define it. To recap:
 * derive from `std::typeinfo`,
 * override `__do_catch` to execute our code and return `true`,
-* suppress generation of the typeinfo for a type and generate our own instead!
+* declare a dummy virtual member function and not define it,
+* write assembler to output our own vtable and typeinfo with a custom vptr.
 
 I'm not suggesting that you should use this - although I've used it successfully - but I think it does demonstrate a need for more 
 information available - on request - at a catch site; and also that this is eminently implementable, at least on the Itanium ABI. 
