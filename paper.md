@@ -1,10 +1,8 @@
-Document number: DXXXXR0
-Project: Programming Language C++
-Audience: LEWG Incubator, LEWG, LWG
- 
-Ed Catmur <ed@catmur.uk>
- 
-Date: 2021-09-19
+##### Document number: DXXXXR0
+##### Project: Programming Language C++
+##### Audience: LEWG Incubator, LEWG, LWG
+##### Ed Catmur <ed@catmur.uk>
+##### Date: 2021-09-19
 
 # Zero-cost exception stacktraces
 
