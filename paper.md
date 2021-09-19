@@ -148,3 +148,11 @@ in several large proprietary code bases to good effect for some time.  We presen
 ## 6. Wording
 
 TODO
+
+## 7. References
+
+1. The Visual C++ Exception Model
+ https://www.gamedev.net/tutorials/programming/general-and-gameplay-programming/the-visual-c-exception-model-r2488/
+2. Stacktrace from exception http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2370r1.html
+3. C++ ABI for Itanium: Exception Handling https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html
+4. Structured Exception Handling (C/C++) https://docs.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp
