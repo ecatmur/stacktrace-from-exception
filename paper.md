@@ -4,7 +4,7 @@
 ##### Ed Catmur <ed@catmur.uk>
 ##### Date: 2021-09-19
 
-# Zero-cost exception stacktraces
+# Zero-overhead exception stacktraces
 
 ## 0. Pre-publication tasks
 
@@ -15,12 +15,12 @@
 
 ## 1. Abstract
 
-This paper identifies concerns with part of the **Stacktrace from exception** proposal.  We suggest alternate approaches and offer implementation experience of the
+This paper identifies concerns with part of the **Stacktrace from exception**[2] proposal.  We suggest alternate approaches and offer implementation experience of the
 techniques that could underly such alternatives.
 
 ## 2. Background
 
-The paper **Stacktrace from exception** amply sets out why it is desired to be able to access a stacktrace from exception; that is, when *handling* an exception it should be
+The paper **Stacktrace from exception**[2] amply sets out why it is desired to be able to access a stacktrace from exception; that is, when *handling* an exception it should be
 possible to retrieve a stacktrace from the (most recent) `throw` point of the exception, through the point of handling; and that this should be *transparent* to and not require
 *cooperation by* or *modification of* throwing code.  That paper acknowledges that the cost of taking a stacktrace on *every* exception throw would be prohibitive and proposes a
 mechanism to disable it via a standard library routine `std::this_thread::set_capture_stacktraces_at_throw` that will set a thread-local flag.
@@ -30,7 +30,7 @@ We argue that this mechanism still imposes a runtime cost and would not achieve 
 ### 2.1. Runtime cost
 
 Accessing a thread-local variable has a cost in instructions and memory access; at present this could be argued to be lost in the "noise" of the existing exception handling
-machinery, particularly as this currently involves memory allocation, but in future if and when the **static exceptions** proposal is adopted this will become relatively more
+machinery, particularly as this currently involves memory allocation, but in future if and when the **Zero-overhead deterministic exceptions: Throwing values**[5] proposal is adopted this will become relatively more
 significant.  In any case even a *de minimis* runtime cost is not zero.
 
 ### 2.2. Old third-party libraries
@@ -48,8 +48,8 @@ remain enabled.
 
 ## 3. Alternatives
 
-We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.  On Windows this is structured exception handling, while on Itanium
-it is the Level I Base ABI.  This lower-level facility uses *two-phase* exception handling; in the first, "search" phase the stack is walked from the throw point to identify
+We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.  On Windows this is structured exception handling[4], while on Itanium
+it is the Level I Base ABI[3].  This lower-level facility uses *two-phase* exception handling; in the first, "search" phase the stack is walked from the throw point to identify
 a suitable handler, while in the second, "unwind" phase it is walked again from the throw point to the selected handler, this time invoking cleanup (i.e., destructors) along
 the way. Importantly,
 
@@ -135,9 +135,9 @@ internals and in use.
 
 ### 5.1. Windows
 
-It is well known that the vendor-specific `__try` and `__except` keywords (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked during search 
+It is well known that the vendor-specific `__try` and `__except` keywords[6] (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked during search 
 phase, since the argument to the `__except` keyword is a *filter-expression* evaluated during search phase, to an enumeration indicating whether the consequent code block is to 
-be selected as the handler.  We present an example adapted from an article by Howard Jeng.
+be selected as the handler.  We present an example adapted from an article by Howard Jeng[1].
 
 ### 5.2. Itanium
 
@@ -156,3 +156,5 @@ TODO
 2. Stacktrace from exception http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2370r1.html
 3. C++ ABI for Itanium: Exception Handling https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html
 4. Structured Exception Handling (C/C++) https://docs.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp
+5. Zero-overhead deterministic exceptions: Throwing values http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0709r4.pdf
+6. `try-except` statement https://docs.microsoft.com/en-us/cpp/cpp/try-except-statement
