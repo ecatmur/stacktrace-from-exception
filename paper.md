@@ -15,7 +15,7 @@
 
 ## 1. Abstract
 
-This paper identifies performance issues with part of the **Stacktrace from exception** proposal.  We suggest alternate approaches and offer implementation experience of the
+This paper identifies concerns with part of the **Stacktrace from exception** proposal.  We suggest alternate approaches and offer implementation experience of the
 techniques that could underly such alternatives.
 
 ## 2. Background
