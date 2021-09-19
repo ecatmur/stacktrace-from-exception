@@ -125,6 +125,9 @@ available by attaching a debugger.
 
 Some of the proposed mechanisms are potentially confusing or open to abuse.
 
+For a *rethrown* exception (using `throw;` or `std::rethrow_exception`) the stacktrace will only extend as far as the rethrow point.  We could provide mechanisms to alleviate
+this, either opt-in or opt-out; for example, adding `std::current_exception_with_stacktrace` or marking `catch` blocks containing `throw;` as requiring stacktrace.
+
 ## 5. Implementation experience
 
 The following implementations are provided solely to demonstrate implementability; we anticipate that any Standard implementation would be significantly less "ugly" in both
