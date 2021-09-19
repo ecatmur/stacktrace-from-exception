@@ -66,7 +66,7 @@ This suggests a possible alternative mechanism; viz.:
 The advantages of this approach are twofold:
 
 * *transparency*: there is no need whatsoever for throwing code to be modified, recompiled or relinked.  Indeed, since this mechanism relies solely on changes to the catch
-  site, code using this mechanism may be introduced into existing programs without any need for those programs to be recompiled or relinked, as long as that new code has access
+  site, code using this mechanism may be introduced into existing (perhaps even running) programs without any need for those programs to be recompiled or relinked, as long as that new code has access
   to any necessary support libraries;
 * *zero-cost*: if the search phase does not reach a `catch` block so marked (i.e., if the exception is caught and handled internally) then behavior is entirely unaffected.
 
