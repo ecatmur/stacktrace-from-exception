@@ -63,6 +63,13 @@ This suggests a possible alternative mechanism; viz.:
   exception, it takes a stacktrace during search phase, immediately before nominating that `catch` block as a suitable handler; then
 * the user code can retrieve that stored stacktrace during exception handling, after stack unwinding.
 
+The advantages of this approach are twofold:
+
+* *transparency*: there is no need whatsoever for throwing code to be modified, recompiled or relinked.  Indeed, since this mechanism relies solely on changes to the catch
+  site, code using this mechanism may be introduced into existing programs without any need for those programs to be recompiled or relinked, as long as that new code has access
+  to any necessary support libraries;
+* *zero-cost*: if the search phase does not reach a `catch` block so marked (i.e., if the exception is caught and handled internally) then behavior is entirely unaffected.
+
 We now propose a number of possible syntaxes for user code to opt in to the mechanism and retrieve the stored stacktrace.
 
 ### 3.1. Special function
