@@ -1,4 +1,6 @@
 //Copyright (c) 2007 Howard Jeng
+//Copyright (c) 2016 Ilya Dedinsky
+//Copyright (c) 2021 Ed Catmur
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
 //in the Software without restriction, including without limitation the rights
@@ -23,6 +25,44 @@
 #include <stdexcept>
 #include <string>
 #include <typeinfo>
+
+//------------------------------------------------------------------------------------------------------------------------------
+//! These definitions are based on assembly listings produded by the compiler (/FAs) rather than built-in ones
+//! @{
+
+#pragma pack (push, 4)
+
+namespace CORRECT
+{
+
+    struct CatchableType
+    {
+        __int32 properties;
+        __int32 pType;
+        _PMD    thisDisplacement;
+        __int32 sizeOrOffset;
+        __int32 copyFunction;
+    };
+
+    struct ThrowInfo
+    {
+        __int32 attributes;
+        __int32 pmfnUnwind;
+        __int32 pForwardCompat;
+        __int32 pCatchableTypeArray;
+    };
+
+}
+#pragma pack (pop)
+
+//! @}
+//------------------------------------------------------------------------------------------------------------------------------
+
+const unsigned EXCEPTION_CPP_MICROSOFT = 0xE06D7363;  // '?msc'
+static constexpr unsigned EXCEPTION_CPP_MICROSOFT_EH_MAGIC_NUMBER1 = 0x19930520;  // '?msc' version magic, see ehdata.h
+
+//------------------------------------------------------------------------------------------------------------------------------
+
 
 class SymInit {
 public:
@@ -73,11 +113,11 @@ void write_file_and_line(std::ostream & os, HANDLE process, DWORD64 program_coun
 }
 void generate_stack_trace(std::ostream & os, CONTEXT ctx, int skip) {
     STACKFRAME64 sf = {};
-    sf.AddrPC.Offset = ctx.Eip;
+    sf.AddrPC.Offset = ctx.Rip;
     sf.AddrPC.Mode = AddrModeFlat;
-    sf.AddrStack.Offset = ctx.Esp;
+    sf.AddrStack.Offset = ctx.Rsp;
     sf.AddrStack.Mode = AddrModeFlat;
-    sf.AddrFrame.Offset = ctx.Ebp;
+    sf.AddrFrame.Offset = ctx.Rbp;
     sf.AddrFrame.Mode = AddrModeFlat;
     HANDLE process = GetCurrentProcess();
     HANDLE thread = GetCurrentThread();
@@ -100,29 +140,53 @@ void generate_stack_trace(std::ostream & os, CONTEXT ctx, int skip) {
     }
 }
 struct UntypedException {
-    UntypedException(const EXCEPTION_RECORD & er) :
+#define RVA_TO_VA_(type, addr)  ( (type) ((uintptr_t) module + (uintptr_t) (addr)) )
+    UntypedException(const EXCEPTION_RECORD& er) :
         exception_object(reinterpret_cast<void*>(er.ExceptionInformation[1])),
-        type_array(reinterpret_cast<_ThrowInfo *>(er.ExceptionInformation[2])->pCatchableTypeArray)
-    {}
-    void * exception_object;
-    _CatchableTypeArray * type_array;
-};
-void * exception_cast_worker(const UntypedException & e, const type_info & ti) {
-    for (int i = 0; i < e.type_array->nCatchableTypes; ++i) {
-        _CatchableType & type_i = *e.type_array->arrayOfCatchableTypes[i];
-        const std::type_info & ti_i = *reinterpret_cast<std::type_info const*>(type_i.pType);
-        if (ti_i == ti) {
-            char * base_address = reinterpret_cast<char*>(e.exception_object);
-            base_address += type_i.thisDisplacement.mdisp;
-            return base_address;
+        exc(&er)
+    {
+        if (exc->ExceptionInformation[0] == EXCEPTION_CPP_MICROSOFT_EH_MAGIC_NUMBER1 &&
+            exc->NumberParameters >= 3)
+        {
+            module = (exc->NumberParameters >= 4) ? (HMODULE)exc->ExceptionInformation[3] : NULL;
+            throwInfo = (const CORRECT::ThrowInfo*)exc->ExceptionInformation[2];
+            if (throwInfo)
+                cArray = RVA_TO_VA_(const _CatchableTypeArray*, throwInfo->pCatchableTypeArray);
         }
     }
-    return 0;
+
+    unsigned getNumCatchableTypes() const { return cArray ? cArray->nCatchableTypes : 0u; }
+
+    std::type_info const* getTypeInfo(unsigned i) const
+    {
+        const CORRECT::CatchableType* cType = RVA_TO_VA_(const CORRECT::CatchableType*, cArray->arrayOfCatchableTypes[i]);
+        return RVA_TO_VA_(const std::type_info*, cType->pType);
+    }
+
+    unsigned getThisDisplacement(unsigned i) const
+    {
+        const CORRECT::CatchableType* cType = RVA_TO_VA_(const CORRECT::CatchableType*, cArray->arrayOfCatchableTypes[i]);
+        return cType->thisDisplacement.mdisp;
+    }
+
+    void * exception_object;
+    EXCEPTION_RECORD const* exc;
+    HMODULE module = nullptr;
+    const CORRECT::ThrowInfo* throwInfo = nullptr;
+    const _CatchableTypeArray* cArray = nullptr;
+#undef RVA_TO_VA_
+};
+void * exception_cast_worker(const UntypedException & e, const type_info & ti) {
+    for (int i = 0; i < e.getNumCatchableTypes(); ++i) {
+        const std::type_info & ti_i = *e.getTypeInfo(i);
+        if (ti_i == ti)
+            return reinterpret_cast<char*>(e.exception_object) + e.getThisDisplacement(i);
+    }
+    return nullptr;
 }
 void get_exception_types(std::ostream & os, const UntypedException & e) {
-    for (int i = 0; i < e.type_array->nCatchableTypes; ++i) {
-        _CatchableType & type_i = *e.type_array->arrayOfCatchableTypes[i];
-        const std::type_info & ti_i = *reinterpret_cast<std::type_info const*>(type_i.pType);
+    for (int i = 0; i < e.getNumCatchableTypes(); ++i) {
+        const std::type_info& ti_i = *e.getTypeInfo(i);
         os << ti_i.name() << "\n";
     }
 }
@@ -131,19 +195,20 @@ template<class T> T * exception_cast(const UntypedException & e) {
     return reinterpret_cast<T*>(exception_cast_worker(e, ti));
 }
 DWORD do_filter(EXCEPTION_POINTERS * eps, std::string & buffer) {
-    std::stringstream sstr;
+    std::ostringstream sstr;
     const EXCEPTION_RECORD & er = *eps->ExceptionRecord;
     int skip = 0;
     switch (er.ExceptionCode) {
-    case 0xE06D7363: { // C++ exception
+    case EXCEPTION_CPP_MICROSOFT: { // C++ exception
         UntypedException ue(er);
-        if (std::exception * e = exception_cast<std::exception>(ue)) {
+        if (std::exception* e = exception_cast<std::exception>(ue)) {
             const std::type_info & ti = typeid(*e);
             sstr << ti.name() << ":" << e->what();
         } else {
             sstr << "Unknown C++ exception thrown.\n";
             get_exception_types(sstr, ue);
-        } skip = 2; // skip RaiseException and _CxxThrowException
+        }
+        skip = 2; // skip RaiseException and _CxxThrowException
     }
     break;
     case EXCEPTION_ACCESS_VIOLATION: {
@@ -176,8 +241,8 @@ int actual_main(int, char **) {
     // divide by zero
     //int x = 5; x = x / (x - x);
     // C++ exception
-    //throw std::runtime_error("I'm an exception!");
-    throw 5;
+    throw std::runtime_error("I'm an exception!");
+    //throw 5;
     return 0;
 }
 void save_buffer(const std::string & buffer) {
