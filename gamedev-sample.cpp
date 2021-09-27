@@ -96,12 +96,12 @@ void write_module_name(std::ostream & os, HANDLE process, DWORD64 program_counte
     }
 }
 void write_function_name(std::ostream & os, HANDLE process, DWORD64 program_counter) {
-    SYMBOL_INFO_PACKAGE sym = { sizeof(sym) };
+    SYMBOL_INFO_PACKAGE sym = { sizeof(sym.si) };
     sym.si.MaxNameLen = MAX_SYM_NAME;
     if (SymFromAddr(process, program_counter, 0, &sym.si)) {
         os << sym.si.Name << "()";
     } else {
-        os << "Unknown function";
+        os << "???";
     }
 }
 void write_file_and_line(std::ostream & os, HANDLE process, DWORD64 program_counter) {
@@ -124,7 +124,7 @@ void generate_stack_trace(std::ostream & os, CONTEXT ctx, int skip) {
     os << std::uppercase;
     for (;;) {
         SetLastError(0);
-        BOOL stack_walk_ok = StackWalk64(IMAGE_FILE_MACHINE_I386, process, thread, &sf, &ctx, 0, &SymFunctionTableAccess64, &SymGetModuleBase64, 0);
+        BOOL stack_walk_ok = StackWalk64(IMAGE_FILE_MACHINE_AMD64, process, thread, &sf, &ctx, 0, &SymFunctionTableAccess64, &SymGetModuleBase64, 0);
         if (!stack_walk_ok || !sf.AddrFrame.Offset)
             return;
         if (skip) {
@@ -159,13 +159,13 @@ struct UntypedException {
 
     std::type_info const* getTypeInfo(unsigned i) const
     {
-        const CORRECT::CatchableType* cType = RVA_TO_VA_(const CORRECT::CatchableType*, cArray->arrayOfCatchableTypes[i]);
+        const CORRECT::CatchableType* cType = RVA_TO_VA_(const CORRECT::CatchableType*, ((__int32*)(cArray->arrayOfCatchableTypes))[i]);
         return RVA_TO_VA_(const std::type_info*, cType->pType);
     }
 
     unsigned getThisDisplacement(unsigned i) const
     {
-        const CORRECT::CatchableType* cType = RVA_TO_VA_(const CORRECT::CatchableType*, cArray->arrayOfCatchableTypes[i]);
+        const CORRECT::CatchableType* cType = RVA_TO_VA_(const CORRECT::CatchableType*, ((__int32*)(cArray->arrayOfCatchableTypes))[i]);
         return cType->thisDisplacement.mdisp;
     }
 
