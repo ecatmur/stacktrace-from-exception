@@ -217,13 +217,16 @@ struct StackTrace {
 #if defined __linux__ && __has_include(<elfutils/libdwfl.h>)
         Demangler demangler;
         struct DwflGuard {
-            static constexpr ::Dwfl_Callbacks callbacks = {
-                ::dwfl_linux_proc_find_elf, ::dwfl_standard_find_debuginfo, nullptr, nullptr};
-            Dwfl* dwfl = ::dwfl_begin(&callbacks);
+            Dwfl* dwfl;
+            DwflGuard() {
+                static constexpr ::Dwfl_Callbacks callbacks = {
+                    ::dwfl_linux_proc_find_elf, ::dwfl_standard_find_debuginfo, nullptr, nullptr};
+                dwfl = ::dwfl_begin(&callbacks);
+                ::dwfl_linux_proc_report(dwfl, ::getpid());
+                ::dwfl_report_end(dwfl, nullptr, nullptr);
+            }
             ~DwflGuard() { ::dwfl_end(dwfl); }
         } guard;
-        ::dwfl_linux_proc_report(guard.dwfl, ::getpid());
-        ::dwfl_report_end(guard.dwfl, nullptr, nullptr);
 #endif
         for (auto const pc : st.pc) {
             auto const addr = reinterpret_cast<std::uintptr_t>(pc);
