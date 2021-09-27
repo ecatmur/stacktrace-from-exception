@@ -15,18 +15,29 @@
 //OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 //THE SOFTWARE.
 
-#include <Windows.h>
-#include <dbghelp.h>
-
 #include <exception>
-#include <fstream>
 #include <iostream>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <typeinfo>
 #include <vector>
 
+#if defined _WIN32
+#   include <Windows.h>
+#   include <dbghelp.h>
+#elif defined __linux__
+#   include <functional>
+#   include <memory>
+#   if __has_include(<elfutils/libdwfl.h>)
+#       include <elfutils/libdwfl.h>
+#   endif
+#   include <cxxabi.h>
+#   include <execinfo.h>
+#else
+#   error unsupported, sorry
+#endif
+
+#if defined _WIN32
 #pragma pack (push, 4)
 namespace CORRECT
 {
@@ -66,73 +77,7 @@ private:
     SymInit(const SymInit &) = delete;
     SymInit & operator=(const SymInit &) = delete;
 };
-
-struct StackTrace {
-    StackTrace() = default;
-
-    HANDLE process = nullptr;
-    std::vector<DWORD64> pc;
-
-    void generate(CONTEXT ctx, int skip) {
-        STACKFRAME64 sf = {};
-        sf.AddrPC.Offset = ctx.Rip;
-        sf.AddrPC.Mode = AddrModeFlat;
-        sf.AddrStack.Offset = ctx.Rsp;
-        sf.AddrStack.Mode = AddrModeFlat;
-        sf.AddrFrame.Offset = ctx.Rbp;
-        sf.AddrFrame.Mode = AddrModeFlat;
-        process = GetCurrentProcess();
-        HANDLE thread = GetCurrentThread();
-        for (;;) {
-            SetLastError(0);
-            BOOL stack_walk_ok = StackWalk64(IMAGE_FILE_MACHINE_AMD64, process, thread, &sf, &ctx, 0, &SymFunctionTableAccess64, &SymGetModuleBase64, 0);
-            if (!stack_walk_ok || !sf.AddrFrame.Offset)
-                return;
-            if (skip)
-                --skip;
-            else
-                pc.push_back(sf.AddrPC.Offset);
-        }
-    }
-
-    friend std::ostream& operator<<(std::ostream& os, StackTrace const& st) {
-        os << std::uppercase;
-        for (auto const pc : st.pc) {
-            // write the address
-            os << std::hex << static_cast<std::uintptr_t>(pc) << "|" << std::dec;
-            // write module name
-            DWORD64 module_base = SymGetModuleBase64(st.process, pc);
-            if (module_base) {
-                char path_name[MAX_PATH] = {};
-                DWORD size = GetModuleFileNameA(reinterpret_cast<HMODULE>(module_base), path_name, MAX_PATH);
-                if (size)
-                    os << path_name << "|";
-                else
-                    os << "???|";
-            }
-            else {
-                os << "???|";
-            }
-            // write function name
-            SYMBOL_INFO_PACKAGE sym = { sizeof(sym.si) };
-            sym.si.MaxNameLen = MAX_SYM_NAME;
-            if (SymFromAddr(st.process, pc, 0, &sym.si)) {
-                os << sym.si.Name << "()";
-            }
-            else {
-                os << "???";
-            }
-            // write source location
-            IMAGEHLP_LINE64 ih_line = { sizeof(IMAGEHLP_LINE64) };
-            DWORD dummy = 0;
-            if (SymGetLineFromAddr64(st.process, pc, &dummy, &ih_line)) {
-                os << "|" << ih_line.FileName << ":" << ih_line.LineNumber;
-            }
-            os << "\n";
-        }
-        return os;
-    }
-};
+void ensureSymInit() { static SymInit sym; }
 
 struct UntypedException {
 #define RVA_TO_VA_(type, addr)  ( (type) ((uintptr_t) module + (uintptr_t) (addr)) )
@@ -176,12 +121,171 @@ template<class T> T * exception_cast(const UntypedException & e) {
         if (ti_i == ti)
             return reinterpret_cast<T*>(e.exception_object) + e.getThisDisplacement(i);
     }
-    return nullptr;    
+    return nullptr;
 }
+#elif defined __linux__
+struct AnyExceptionTypeInfo : std::type_info {
+    bool __do_catch(std::type_info const* thr_type, void** thr_obj, unsigned outer) const override;
+};
+struct AnyException {
+    virtual int dummy();
+    using Handler = std::function<bool(std::type_info const* thr_type, void** thr_obj, unsigned outer)>;
+    inline static thread_local Handler handler;
+};
+__asm__(R"(
+	.weak	_ZTV12AnyException
+	.section	.rodata._ZTV12AnyException,"aG",@progbits,_ZTV12AnyException,comdat
+	.align 8
+	.type	_ZTV12AnyException, @object
+	.size	_ZTV12AnyException, 24
+_ZTV12AnyException:
+	.quad	0
+	.quad	_ZTI12AnyException
+	.quad	0
+	.weak	_ZTI12AnyException
+	.section	.rodata._ZTI12AnyException,"aG",@progbits,_ZTI12AnyException,comdat
+	.align 8
+	.type	_ZTI12AnyException, @object
+	.size	_ZTI12AnyException, 16
+_ZTI12AnyException:
+	.quad	_ZTV20AnyExceptionTypeInfo+16
+	.quad	_ZTS12AnyException
+	.weak	_ZTS12AnyException
+	.section	.rodata._ZTS12AnyException,"aG",@progbits,_ZTS12AnyException,comdat
+	.align 8
+	.type	_ZTS12AnyException, @object
+	.size	_ZTS12AnyException, 15
+_ZTS12AnyException:
+	.string	"12AnyException"
+)");
+bool AnyExceptionTypeInfo::__do_catch(std::type_info const* thr_type, void** thr_obj, unsigned outer) const {
+    return AnyException::handler(thr_type, thr_obj, outer);
+}
+struct Demangler {
+    std::unique_ptr<char, void(*)(void*)> output{nullptr, ::free};
+    std::size_t length = 0;
+    std::string operator()(char const* symbol) {
+        int status;
+        if (auto* const result = abi::__cxa_demangle(symbol, output.get(), &length, &status)) {
+            output.release();
+            output.reset(result);
+            return result;
+        }
+        return symbol;
+    }
+};
+#endif
+
+struct StackTrace {
+    StackTrace() = default;
+
+#if defined WIN32
+    HANDLE process = GetCurrentProcess();
+    std::vector<DWORD64> pc;
+#elif defined __linux__
+    static constexpr const std::size_t MaxSize = 128;
+    std::vector<void*> pc;
+#endif
+
+#if defined WIN32
+    void generate(CONTEXT ctx) {
+        STACKFRAME64 sf = {};
+        sf.AddrPC.Offset = ctx.Rip;
+        sf.AddrPC.Mode = AddrModeFlat;
+        sf.AddrStack.Offset = ctx.Rsp;
+        sf.AddrStack.Mode = AddrModeFlat;
+        sf.AddrFrame.Offset = ctx.Rbp;
+        sf.AddrFrame.Mode = AddrModeFlat;
+        HANDLE thread = GetCurrentThread();
+        for (;;) {
+            SetLastError(0);
+            BOOL stack_walk_ok = StackWalk64(IMAGE_FILE_MACHINE_AMD64, process, thread, &sf, &ctx, 0, &SymFunctionTableAccess64, &SymGetModuleBase64, 0);
+            if (!stack_walk_ok || !sf.AddrFrame.Offset)
+                return;
+            pc.push_back(sf.AddrPC.Offset);
+        }
+    }
+#elif defined __linux__
+    void generate() {
+        pc.resize(MaxSize);
+        pc.resize(::backtrace(pc.data(), pc.size()));
+    }
+#endif
+
+    friend std::ostream& operator<<(std::ostream& os, StackTrace const& st) {
+        os << std::uppercase;
+#if defined __linux__ && __has_include(<elfutils/libdwfl.h>)
+        Demangler demangler;
+        struct DwflGuard {
+            static constexpr ::Dwfl_Callbacks callbacks = {
+                ::dwfl_linux_proc_find_elf, ::dwfl_standard_find_debuginfo, nullptr, nullptr};
+            Dwfl* dwfl = ::dwfl_begin(&callbacks);
+            ~DwflGuard() { ::dwfl_end(dwfl); }
+        } guard;
+        ::dwfl_linux_proc_report(guard.dwfl, ::getpid());
+        ::dwfl_report_end(guard.dwfl, nullptr, nullptr);
+#endif
+        for (auto const pc : st.pc) {
+            auto const addr = reinterpret_cast<std::uintptr_t>(pc);
+            // write the address
+            os << std::hex << addr << "|" << std::dec;
+#if defined WIN32
+            // write module name
+            DWORD64 module_base = SymGetModuleBase64(st.process, pc);
+            if (module_base) {
+                char path_name[MAX_PATH] = {};
+                DWORD size = GetModuleFileNameA(reinterpret_cast<HMODULE>(module_base), path_name, MAX_PATH);
+                if (size)
+                    os << path_name << "|";
+                else
+                    os << "???|";
+            }
+            else {
+                os << "???|";
+            }
+            // write function name
+            SYMBOL_INFO_PACKAGE sym = { sizeof(sym.si) };
+            sym.si.MaxNameLen = MAX_SYM_NAME;
+            if (SymFromAddr(st.process, pc, 0, &sym.si)) {
+                os << sym.si.Name << "()";
+            }
+            else {
+                os << "???";
+            }
+            // write source location
+            IMAGEHLP_LINE64 ih_line = { sizeof(IMAGEHLP_LINE64) };
+            DWORD dummy = 0;
+            if (SymGetLineFromAddr64(st.process, pc, &dummy, &ih_line)) {
+                os << "|" << ih_line.FileName << ":" << ih_line.LineNumber;
+            }
+#elif defined __linux__ && __has_include(<elfutils/libdwfl.h>)
+            if (auto const module = ::dwfl_addrmodule(guard.dwfl, addr)) {
+                // write module name
+                os << ::dwfl_module_info(module, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr) << "|";
+                ::GElf_Off offset;
+                ::GElf_Sym sym;
+                // write function name
+                if (auto const function =
+                    ::dwfl_module_addrinfo(module, addr, &offset, &sym, nullptr, nullptr, nullptr))
+                    os << demangler(function) << "+" << offset;
+                // write source location
+                int lineno, column;
+                if (auto const line = ::dwfl_module_getsrc(module, addr))
+                    if (auto const src = ::dwfl_lineinfo(line, nullptr, &lineno, &column, nullptr, nullptr))
+                        os << "|" << src << ":" << lineno << ":" << column;
+            }
+#endif
+            os << "\n";
+        }
+        return os;
+    }
+};
 
 template<class Ex>
 auto tryCatch(auto f, auto e) {
     StackTrace st;
+#if defined WIN32
+    ensureSymInit();
     try {
         return [&] {
             __try {
@@ -192,10 +296,8 @@ auto tryCatch(auto f, auto e) {
                     const EXCEPTION_RECORD& er = *eps->ExceptionRecord;
                     if (er.ExceptionCode == EXCEPTION_CPP_MICROSOFT) { // C++ exception
                         UntypedException ue(er);
-                        if (exception_cast<Ex>(ue)) {
-                            int skip = 2; // skip RaiseException and _CxxThrowException
-                            st.generate(*eps->ContextRecord, skip);
-                        }
+                        if (exception_cast<Ex>(ue))
+                            st.generate(*eps->ContextRecord);
                     }
                     return EXCEPTION_CONTINUE_SEARCH;
                 }
@@ -210,10 +312,29 @@ auto tryCatch(auto f, auto e) {
     catch (Ex& ex) {
         return e(ex, st);
     }
+#elif defined __linux__
+    struct Guard {
+        AnyException::Handler prev;
+        Guard(AnyException::Handler handler) : prev(std::exchange(AnyException::handler, std::move(handler))) {}
+        ~Guard() { AnyException::handler = std::move(prev); }
+    } guard([&](std::type_info const* thr_type, void** thr_obj, unsigned outer) -> bool {
+        st.generate();
+        return typeid(Ex).__do_catch(thr_type, thr_obj, outer);
+    });
+    try {
+        return f();
+    }
+    catch (AnyException&) {
+        try {
+            std::rethrow_exception(std::current_exception());
+        } catch (Ex& ex) {
+            return e(ex, st);
+        }
+    }
+#endif
 }
 
 int main(int argc, char** argv) {
-    SymInit sym;
     return tryCatch<std::exception>([&]() -> int {
         throw std::runtime_error("I'm an exception!");
         }, [&](std::exception& ex, StackTrace const& st) {
