@@ -39,24 +39,20 @@
 
 #if defined _WIN32
 #pragma pack (push, 4)
-namespace CORRECT
-{
-    struct CatchableType
-    {
-        __int32 properties;
-        __int32 pType;
-        _PMD    thisDisplacement;
-        __int32 sizeOrOffset;
-        __int32 copyFunction;
-    };
-
-    struct ThrowInfo
-    {
-        __int32 attributes;
-        __int32 pmfnUnwind;
-        __int32 pForwardCompat;
-        __int32 pCatchableTypeArray;
-    };
+namespace CORRECT {
+struct CatchableType {
+    __int32 properties;
+    __int32 pType;
+    _PMD    thisDisplacement;
+    __int32 sizeOrOffset;
+    __int32 copyFunction;
+};
+struct ThrowInfo {
+    __int32 attributes;
+    __int32 pmfnUnwind;
+    __int32 pForwardCompat;
+    __int32 pCatchableTypeArray;
+};
 }
 #pragma pack (pop)
 
