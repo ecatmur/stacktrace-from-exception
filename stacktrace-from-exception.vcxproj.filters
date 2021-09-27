@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="gamedev-sample.cpp">
+    <ClCompile Include="stacktrace-from-exception.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
