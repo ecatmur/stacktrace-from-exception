@@ -214,8 +214,9 @@ struct StackTrace {
 
     friend std::ostream& operator<<(std::ostream& os, StackTrace const& st) {
         os << std::uppercase;
-#if defined __linux__ && __has_include(<elfutils/libdwfl.h>)
+#if defined __linux__
         Demangler demangler;
+#   if __has_include(<elfutils/libdwfl.h>)
         struct DwflGuard {
             Dwfl* dwfl;
             DwflGuard() {
@@ -227,8 +228,12 @@ struct StackTrace {
             }
             ~DwflGuard() { ::dwfl_end(dwfl); }
         } guard;
+#   else
+        std::unique_ptr<char*[], void(&)(void*)> symbols{::backtrace_symbols(st.pc.data(), st.pc.size()), ::free};
+#   endif
 #endif
-        for (auto const pc : st.pc) {
+        for (auto i = 0u; i != st.pc.size(); ++i) {
+            auto const pc = st.pc[i];
             auto const addr = reinterpret_cast<std::uintptr_t>(pc);
             // write the address
             os << std::hex << addr << "|" << std::dec;
@@ -261,7 +266,8 @@ struct StackTrace {
             if (SymGetLineFromAddr64(st.process, pc, &dummy, &ih_line)) {
                 os << "|" << ih_line.FileName << ":" << ih_line.LineNumber;
             }
-#elif defined __linux__ && __has_include(<elfutils/libdwfl.h>)
+#elif defined __linux__
+#   if __has_include(<elfutils/libdwfl.h>)
             if (auto const module = ::dwfl_addrmodule(guard.dwfl, addr)) {
                 // write module name
                 os << ::dwfl_module_info(module, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr) << "|";
@@ -277,6 +283,20 @@ struct StackTrace {
                     if (auto const src = ::dwfl_lineinfo(line, nullptr, &lineno, &column, nullptr, nullptr))
                         os << "|" << src << ":" << lineno << ":" << column;
             }
+#   else
+            // symbol:  /path/to/file(function+0x0ff5e7) [0xadd2e55]
+            // or       /path/to/file() [0xadd2e55]
+            char* symbol = symbols.get()[i],* open = nullptr,* plus = nullptr,* close = nullptr;
+            for (char* p = symbol; *p; ++p)
+                switch (*p) {
+                case '(': *(open = p) = '\0'; break;
+                case '+': *(plus = p) = '\0'; break;
+                case ')': *(close = p) = '\0'; break;
+                }
+            os << symbol;
+            if (open && plus && close && open < plus && plus < close)
+                os << "|" << demangler(open + 1) << "+" << std::strtoul(plus + 1, nullptr, 16);
+#   endif
 #endif
             os << "\n";
         }
