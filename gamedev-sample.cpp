@@ -27,10 +27,6 @@
 #include <typeinfo>
 #include <vector>
 
-//------------------------------------------------------------------------------------------------------------------------------
-//! These definitions are based on assembly listings produded by the compiler (/FAs) rather than built-in ones
-//! @{
-
 #pragma pack (push, 4)
 namespace CORRECT
 {
@@ -53,14 +49,8 @@ namespace CORRECT
 }
 #pragma pack (pop)
 
-//! @}
-//------------------------------------------------------------------------------------------------------------------------------
-
-const unsigned EXCEPTION_CPP_MICROSOFT = 0xE06D7363;  // '?msc'
+static constexpr unsigned EXCEPTION_CPP_MICROSOFT = 0xE06D7363;  // '?msc'
 static constexpr unsigned EXCEPTION_CPP_MICROSOFT_EH_MAGIC_NUMBER1 = 0x19930520;  // '?msc' version magic, see ehdata.h
-
-//------------------------------------------------------------------------------------------------------------------------------
-
 
 class SymInit {
 public:
@@ -228,6 +218,6 @@ int main(int argc, char** argv) {
         throw std::runtime_error("I'm an exception!");
         }, [&](std::exception& ex, StackTrace const& st) {
             std::cerr << ex.what() << "\n\nStack:\n" << st << std::endl;
-            return -1;
+            return 2;
         });
 }
