@@ -172,15 +172,6 @@ struct UntypedException {
     }
     unsigned getThisDisplacement(unsigned i) const { return cType(i)->thisDisplacement.mdisp; }
 
-    char* copy(unsigned i) const {
-        auto ct = cType(i);
-        // FIXME leak, hack
-        auto data = new char[ct->sizeOrOffset];
-        auto copy = RVA_TO_VA_(void (*)(void*, void*), cType(i)->copyFunction);
-        copy(data, exception_object);
-        return data;
-    }
-
     void * exception_object;
     EXCEPTION_RECORD const* exc;
     HMODULE module = nullptr;
@@ -188,16 +179,12 @@ struct UntypedException {
     const _CatchableTypeArray* cArray = nullptr;
 #undef RVA_TO_VA_
 };
-template<class T> T * exception_cast(const UntypedException & e, bool copy) {
+template<class T> T * exception_cast(const UntypedException & e) {
     const std::type_info & ti = typeid(T);
     for (int i = 0; i < e.getNumCatchableTypes(); ++i) {
         const std::type_info& ti_i = *e.getTypeInfo(i);
-        if (ti_i == ti) {
-            if (copy)
-                return reinterpret_cast<T*>(e.copy(i));
-            else
-                return reinterpret_cast<T*>(e.exception_object) + e.getThisDisplacement(i);
-        }
+        if (ti_i == ti)
+            return reinterpret_cast<T*>(e.exception_object) + e.getThisDisplacement(i);
     }
     return nullptr;    
 }
@@ -205,33 +192,34 @@ template<class T> T * exception_cast(const UntypedException & e, bool copy) {
 template<class Ex>
 auto tryCatch(auto f, auto e) {
     StackTrace st;
-    Ex* ex = nullptr;
-    return [&] {
-        __try {
-            return f();
-        }
-        __except ([&](EXCEPTION_POINTERS* eps) -> DWORD {
+    try {
+        return [&] {
             __try {
-                const EXCEPTION_RECORD& er = *eps->ExceptionRecord;
-                if (er.ExceptionCode == EXCEPTION_CPP_MICROSOFT) { // C++ exception
-                    UntypedException ue(er);
-                    if (ex = exception_cast<Ex>(ue, true)) {
-                        int skip = 2; // skip RaiseException and _CxxThrowException
-                        st.generate(*eps->ContextRecord, skip);
-                        return EXCEPTION_EXECUTE_HANDLER;
+                return f();
+            }
+            __except ([&](EXCEPTION_POINTERS* eps) -> DWORD {
+                __try {
+                    const EXCEPTION_RECORD& er = *eps->ExceptionRecord;
+                    if (er.ExceptionCode == EXCEPTION_CPP_MICROSOFT) { // C++ exception
+                        UntypedException ue(er);
+                        if (exception_cast<Ex>(ue)) {
+                            int skip = 2; // skip RaiseException and _CxxThrowException
+                            st.generate(*eps->ContextRecord, skip);
+                        }
                     }
+                    return EXCEPTION_CONTINUE_SEARCH;
                 }
+                __except (EXCEPTION_EXECUTE_HANDLER) {
+                    return EXCEPTION_CONTINUE_SEARCH;
+                }
+                }(GetExceptionInformation())) {
                 return EXCEPTION_CONTINUE_SEARCH;
             }
-            __except (EXCEPTION_EXECUTE_HANDLER) {
-                return EXCEPTION_CONTINUE_SEARCH;
-            }
-            }(GetExceptionInformation())) {
-            return [&] {
-                return e(*ex, st);
-            }();
-        }
-    }();
+        }();
+    }
+    catch (Ex& ex) {
+        return e(ex, st);
+    }
 }
 
 int main(int argc, char** argv) {
