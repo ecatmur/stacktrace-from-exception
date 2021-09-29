@@ -137,13 +137,13 @@ internals and in use.
 
 It is well known that the vendor-specific `__try` and `__except` keywords[6] (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked during search 
 phase, since the argument to the `__except` keyword is a *filter-expression* evaluated during search phase, to an enumeration indicating whether the consequent code block is to 
-be selected as the handler.  We present an example[7] adapted from an article by Howard Jeng[1].
+be selected as the handler.  We present a proof-of-concept implementation[7] (currently 64-bit only) adapted from an article by Howard Jeng[1].
 
 ### 5.2. Itanium
 
 Although exception handling on Itanium is also two-phase, the handler selection mechanism is largely hidden from the user.  However, there is a workaround involving creating a
 type whose run-time type information points to an instance of a user-defined subclass of `std::type_info`.  This technique is not particularly widely known, but has been used 
-in several large proprietary code bases to good effect for some time.  We present an example implementation[7].
+in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation[7].
 
 ## 6. Wording
 
