@@ -48,10 +48,10 @@ remain enabled.
 
 ## 3. Alternatives
 
-We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.  On Windows this is structured exception handling[4], while on Itanium
-it is the Level I Base ABI[3].  This lower-level facility uses *two-phase* exception handling; in the first, "search" phase the stack is walked from the throw point to identify
-a suitable handler, while in the second, "unwind" phase it is walked again from the throw point to the selected handler, this time invoking cleanup (i.e., destructors) along
-the way. Importantly,
+We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.  On Windows this is structured exception handling[4], 
+while on the Itanium ABI (used by most Unix-style OSes on x64-64) it is the Level I Base ABI[3].  This lower-level facility uses *two-phase* exception handling; in 
+the first, "search" phase the stack is walked from the throw point to identify a suitable handler, while in the second, "unwind" phase it is walked again from the 
+throw point to the selected handler, this time invoking cleanup (i.e., destructors) along the way. Importantly,
 
 * during the whole of the search phase the stack is still intact, and
 * identifying a handler is *dynamic*, calling into a compiler- or library-generated match function.
