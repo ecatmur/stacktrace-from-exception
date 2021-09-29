@@ -210,7 +210,9 @@ struct StackTrace {
 
     friend std::ostream& operator<<(std::ostream& os, StackTrace const& st) {
         os << std::uppercase;
-#if defined __linux__
+#if defined WIN32
+        ensureSymInit();
+#else
         Demangler demangler;
 #   if __has_include(<elfutils/libdwfl.h>)
         struct DwflGuard {
@@ -304,7 +306,6 @@ template<class Ex>
 auto tryCatch(auto f, auto e) {
     StackTrace st;
 #if defined WIN32
-    ensureSymInit();
     try {
         return [&] {
             __try {
