@@ -325,7 +325,6 @@ auto tryCatch(auto f, auto e) {
                     return EXCEPTION_CONTINUE_SEARCH;
                 }
                 }(GetExceptionInformation())) {
-                return EXCEPTION_CONTINUE_SEARCH;
             }
         }();
     }
