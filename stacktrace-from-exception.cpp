@@ -306,6 +306,7 @@ template<class Ex>
 auto tryCatch(auto f, auto e) {
     StackTrace st;
 #if defined WIN32
+    ensureSymInit(); // required for StackWalk64
     try {
         return [&] {
             __try {
