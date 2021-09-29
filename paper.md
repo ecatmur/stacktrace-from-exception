@@ -116,8 +116,9 @@ Drawbacks: new syntax, open to abuse, may not be safe to run general user code d
 
 ## 4. Concerns
 
-We do not know whether this mechanism is indeed implementible on all platforms.  We do know that (and, indeed, have practical experience to show that) it is implementable on two
-major platforms that between them cover a dominant proportion of the market.  We would welcome information regarding minority platforms.
+We do not know whether this mechanism is indeed implementible on all platforms.  We do know that (and, indeed, have practical experience to show that) it is 
+implementable on two major platforms (i.e. Windows on Intel, and Unix-like on x86-64) that between them cover a dominant proportion of the market.  We would welcome 
+information regarding minority platforms.
 
 Third-party vendors who view secrecy as a virtue may be tempted to put `catch (...)` blocks at API entry points to prevent information on their library internals leaking 
 out.  In practice they can achieve much the same end by stripping debug symbols and obfuscating object names, and are likely to do so; meanwhile the same information is 
