@@ -40,8 +40,9 @@
 #endif
 
 #if defined _WIN32
-#pragma pack (push, 4)
 namespace CORRECT {
+#   if defined _WIN64
+#       pragma pack (push, 4)
 struct CatchableType {
     __int32 properties;
     __int32 pType;
@@ -55,8 +56,12 @@ struct ThrowInfo {
     __int32 pForwardCompat;
     __int32 pCatchableTypeArray;
 };
+#       pragma pack (pop)
+#   else
+using CatchableType = ::_CatchableType;
+using ThrowInfo = ::_ThrowInfo;
+#   endif
 }
-#pragma pack (pop)
 
 static constexpr unsigned EXCEPTION_CPP_MICROSOFT = 0xE06D7363;  // '?msc'
 static constexpr unsigned EXCEPTION_CPP_MICROSOFT_EH_MAGIC_NUMBER1 = 0x19930520;  // '?msc' version magic, see ehdata.h
@@ -78,7 +83,6 @@ private:
 void ensureSymInit() { static SymInit sym; }
 
 struct UntypedException {
-#define RVA_TO_VA_(type, addr)  ( (type) ((uintptr_t) module + (uintptr_t) (addr)) )
     UntypedException(const EXCEPTION_RECORD& er) :
         exception_object(reinterpret_cast<void*>(er.ExceptionInformation[1])),
         exc(&er)
@@ -89,28 +93,35 @@ struct UntypedException {
             module = (exc->NumberParameters >= 4) ? (HMODULE)exc->ExceptionInformation[3] : NULL;
             throwInfo = (const CORRECT::ThrowInfo*)exc->ExceptionInformation[2];
             if (throwInfo)
-                cArray = RVA_TO_VA_(const _CatchableTypeArray*, throwInfo->pCatchableTypeArray);
+                cArray = rva_to_va<_CatchableTypeArray const*>(throwInfo->pCatchableTypeArray);
         }
     }
 
     unsigned getNumCatchableTypes() const { return cArray ? cArray->nCatchableTypes : 0u; }
 
     CORRECT::CatchableType const* cType(unsigned i) const {
-        return RVA_TO_VA_(const CORRECT::CatchableType*, ((__int32*)(cArray->arrayOfCatchableTypes))[i]);
+        return rva_to_va<CORRECT::CatchableType const*>(
+            reinterpret_cast<std::int32_t const*>(cArray->arrayOfCatchableTypes)[i]);
     }
 
-    std::type_info const* getTypeInfo(unsigned i) const
-    {
-        return RVA_TO_VA_(const std::type_info*, cType(i)->pType);
+    std::type_info const* getTypeInfo(unsigned i) const {
+        return rva_to_va<std::type_info const*>(cType(i)->pType);
     }
     unsigned getThisDisplacement(unsigned i) const { return cType(i)->thisDisplacement.mdisp; }
+
+    template<class T> T rva_to_va(auto addr) const {
+#   if defined _WIN64
+        return reinterpret_cast<T>((uintptr_t) module + (uintptr_t) (addr));
+#   else
+        return reinterpret_cast<T>(addr);
+#   endif
+    }
 
     void * exception_object;
     EXCEPTION_RECORD const* exc;
     HMODULE module = nullptr;
     const CORRECT::ThrowInfo* throwInfo = nullptr;
     const _CatchableTypeArray* cArray = nullptr;
-#undef RVA_TO_VA_
 };
 template<class T> T * exception_cast(const UntypedException & e) {
     const std::type_info & ti = typeid(T);
@@ -177,7 +188,7 @@ struct Demangler {
 struct StackTrace {
     StackTrace() = default;
 
-#if defined WIN32
+#if defined _WIN32
     HANDLE process = GetCurrentProcess();
     std::vector<DWORD64> pc;
 #elif defined __linux__
@@ -185,19 +196,31 @@ struct StackTrace {
     std::vector<void*> pc;
 #endif
 
-#if defined WIN32
+#if defined _WIN32
     void generate(CONTEXT ctx) {
         STACKFRAME64 sf = {};
+#   if defined _WIN64
         sf.AddrPC.Offset = ctx.Rip;
-        sf.AddrPC.Mode = AddrModeFlat;
         sf.AddrStack.Offset = ctx.Rsp;
-        sf.AddrStack.Mode = AddrModeFlat;
         sf.AddrFrame.Offset = ctx.Rbp;
+#   else
+        sf.AddrPC.Offset = ctx.Eip;
+        sf.AddrStack.Offset = ctx.Esp;
+        sf.AddrFrame.Offset = ctx.Ebp;
+#   endif
+        sf.AddrPC.Mode = AddrModeFlat;
+        sf.AddrStack.Mode = AddrModeFlat;
         sf.AddrFrame.Mode = AddrModeFlat;
         HANDLE thread = GetCurrentThread();
         for (;;) {
             SetLastError(0);
-            BOOL stack_walk_ok = StackWalk64(IMAGE_FILE_MACHINE_AMD64, process, thread, &sf, &ctx, 0, &SymFunctionTableAccess64, &SymGetModuleBase64, 0);
+#   if defined _WIN64
+            constexpr auto machine = IMAGE_FILE_MACHINE_AMD64;
+#   else
+            constexpr auto machine = IMAGE_FILE_MACHINE_I386;
+#   endif
+            BOOL stack_walk_ok = StackWalk64(machine, process, thread, &sf, &ctx, 0,
+                &SymFunctionTableAccess64, &SymGetModuleBase64, 0);
             if (!stack_walk_ok || !sf.AddrFrame.Offset)
                 return;
             pc.push_back(sf.AddrPC.Offset);
@@ -212,7 +235,7 @@ struct StackTrace {
 
     friend std::ostream& operator<<(std::ostream& os, StackTrace const& st) {
         os << std::uppercase;
-#if defined WIN32
+#if defined _WIN32
         ensureSymInit();
 #else
         Demangler demangler;
@@ -234,14 +257,14 @@ struct StackTrace {
 #endif
         for (auto i = 0u; i != st.pc.size(); ++i) {
             auto const pc = st.pc[i];
-#if defined WIN32
+#if defined _WIN32
             auto const addr = static_cast<std::uintptr_t>(pc);
 #else
             auto const addr = reinterpret_cast<std::uintptr_t>(pc);
 #endif
             // write the address
             os << std::hex << addr << "|" << std::dec;
-#if defined WIN32
+#if defined _WIN32
             // write module name
             DWORD64 module_base = SymGetModuleBase64(st.process, pc);
             if (module_base) {
@@ -311,7 +334,7 @@ struct StackTrace {
 template<class Ex>
 auto tryCatch(auto f, auto e) {
     StackTrace st;
-#if defined WIN32
+#if defined _WIN32
     ensureSymInit(); // required for StackWalk64
     try {
         return [&] {
