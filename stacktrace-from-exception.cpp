@@ -112,7 +112,7 @@ struct UntypedException {
 };
 template<class T> T * exception_cast(const UntypedException & e) {
     const std::type_info & ti = typeid(T);
-    for (int i = 0; i < e.getNumCatchableTypes(); ++i) {
+    for (unsigned i = 0; i != e.getNumCatchableTypes(); ++i) {
         const std::type_info& ti_i = *e.getTypeInfo(i);
         if (ti_i == ti)
             return reinterpret_cast<T*>(e.exception_object) + e.getThisDisplacement(i);
@@ -232,7 +232,7 @@ struct StackTrace {
 #endif
         for (auto i = 0u; i != st.pc.size(); ++i) {
             auto const pc = st.pc[i];
-            auto const addr = reinterpret_cast<std::uintptr_t>(pc);
+            auto const addr = static_cast<std::uintptr_t>(pc);
             // write the address
             os << std::hex << addr << "|" << std::dec;
 #if defined WIN32
@@ -326,6 +326,7 @@ auto tryCatch(auto f, auto e) {
                     return EXCEPTION_CONTINUE_SEARCH;
                 }
                 }(GetExceptionInformation())) {
+                __assume(0);
             }
         }();
     }

@@ -31,6 +31,20 @@
 *.out
 *.app
 
+# CMake
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+
+# Visual Studio
 .vs
+ALL_BUILD.vcxproj
+ALL_BUILD.vcxproj.filters
 Debug
-err_log.txt
+ZERO_CHECK.vcxproj
+ZERO_CHECK.vcxproj.filters
+stacktrace-from-exception.dir
+stacktrace-from-exception.sln
+stacktrace-from-exception.vcxproj
+stacktrace-from-exception.vcxproj.filters
+x64
