@@ -28,8 +28,10 @@
 #elif defined __linux__
 #   include <functional>
 #   include <memory>
-#   if __has_include(<elfutils/libdwfl.h>)
+#   if defined HAVE_DW
 #       include <elfutils/libdwfl.h>
+#       include <sys/types.h>
+#       include <unistd.h>
 #   endif
 #   include <cxxabi.h>
 #   include <execinfo.h>
@@ -232,7 +234,11 @@ struct StackTrace {
 #endif
         for (auto i = 0u; i != st.pc.size(); ++i) {
             auto const pc = st.pc[i];
+#if defined WIN32
             auto const addr = static_cast<std::uintptr_t>(pc);
+#else
+            auto const addr = reinterpret_cast<std::uintptr_t>(pc);
+#endif
             // write the address
             os << std::hex << addr << "|" << std::dec;
 #if defined WIN32

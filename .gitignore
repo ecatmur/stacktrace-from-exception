@@ -48,3 +48,7 @@ stacktrace-from-exception.sln
 stacktrace-from-exception.vcxproj
 stacktrace-from-exception.vcxproj.filters
 x64
+
+# Make
+Makefile
+stacktrace-from-exception
