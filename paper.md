@@ -1,8 +1,18 @@
-##### Document number: DXXXXR0
-##### Project: Programming Language C++
-##### Audience: LEWG Incubator, LEWG, LWG
-##### Ed Catmur <ed@catmur.uk>
-##### Date: 2021-09-19
+<pre class='metadata'>
+Title:  Zero-overhead exception stacktraces
+Shortname: P2490
+URL: https://wg21.link/P2490
+Revision: 1
+Audience: LEWG
+Status: P
+Group: WG21
+Issue Tracking: GitHub https://github.com/ecatmur/stacktrace-from-exception/issues
+!Source: <a href="https://github.com/ecatmur/stacktrace-from-exception/blob/main/paper.md">github.com/ecatmur/stacktrace-from-exception/blob/main/paper.md</a>
+No Abstract: yes
+Markup Shorthands: markdown yes
+Markup Shorthands: biblio yes
+Editor: Ed Catmur, ed@catmur.uk
+</pre>
 
 # Zero-overhead exception stacktraces
 

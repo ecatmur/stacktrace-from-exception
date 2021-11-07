@@ -18,3 +18,15 @@ elseif(UNIX)
     target_link_options(stacktrace-from-exception PRIVATE -rdynamic)
   endif()
 endif()
+
+find_program(CURL curl)
+if (CURL)
+  add_custom_target(iso_paper
+    COMMAND
+      ${CURL} -k https://api.csswg.org/bikeshed/ -F file=@${CMAKE_CURRENT_SOURCE_DIR}/paper.md -F force=1 > P2490R0.html
+        BYPRODUCTS
+          P2490R0.html
+        COMMENT
+          "Generating ISO Paper P2490 revision 0"
+  )
+endif ()
