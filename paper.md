@@ -1,4 +1,3 @@
-
 <pre class='metadata'>
 Title:  Zero-overhead exception stacktraces
 Shortname: P2490
