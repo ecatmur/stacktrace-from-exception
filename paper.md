@@ -2,7 +2,7 @@
 Title:  Zero-overhead exception stacktraces
 Shortname: P2490
 URL: https://wg21.link/P2490
-Revision: 1
+Revision: 0
 Audience: LEWG
 Status: P
 Group: WG21
@@ -46,7 +46,7 @@ Editor: Ed Catmur, ed@catmur.uk
 }
 </pre>
 
-# Zero-overhead exception stacktraces
+# Overview
 
 ## Abstract
 
@@ -107,9 +107,20 @@ The advantages of this approach are twofold:
   to any necessary support libraries;
 * *zero-cost*: if the search phase does not reach a `catch` block so marked (i.e., if the exception is caught and handled internally) then behavior is entirely unaffected.
 
+## Acknowledgements
+
+Thank you especially to Antony Peacock for getting this paper ready for initial submission, and to Mathias Gaunard for inspiration, review and feedback.
+
+## Revision history
+
+: R0
+:: Initial revision; incorporated informal feedback.
+
+# Possible syntaxes
+
 We now propose a number of possible syntaxes for user code to opt in to the mechanism and retrieve the stored stacktrace.
 
-### Special function
+## Special function
 
 Under this mechanism, a `catch` block that contains a potentially-evaluated call to `std::stacktrace::from_current_exception()` is marked as requiring a stacktrace to be taken
 during search phase:
@@ -125,7 +136,7 @@ try {
 Drawback: if the call is moved out of the `catch` block, e.g. to a helper function, or even perhaps to a lambda within it, the facility will cease to work.
 Possible workaround: make `std::stacktrace::from_current_exception()` ill-formed when called from anywhere other than a `catch` block - this could be ugly.
 
-### Default parameter
+## Default parameter
 
 ```c++
 try {
@@ -139,7 +150,7 @@ This can be understood by analogy to `std::source_location::current()` which sim
 
 Drawbacks: new syntax, could be understood as providing multiple types to be caught.
 
-### "catch-with-init"
+## "catch-with-init"
 
 ```c++
 try {
@@ -153,7 +164,7 @@ Here we add an (optional) *init-statement* to the `catch` clause, to be executed
 
 Drawbacks: new syntax, may not be safe to run general user code during search phase.
 
-### Expose search phase
+## Expose search phase
 
 ```c++
 try {
@@ -165,7 +176,7 @@ try {
 
 Drawbacks: new syntax, open to abuse, may not be safe to run general user code during search phase.
 
-## Concerns
+# Concerns
 
 We do not know whether this mechanism is indeed implementible on all platforms.  We do know that (and, indeed, have practical experience to show that) it is 
 implementable on two major platforms (i.e. Windows on Intel, and Unix-like on x86-64) that between them cover a dominant proportion of the market.  We would welcome 
@@ -180,23 +191,19 @@ Some of the proposed mechanisms are potentially confusing or open to abuse.
 For a *rethrown* exception (using `throw;` or `std::rethrow_exception`) the stacktrace will only extend as far as the rethrow point.  We could provide mechanisms to alleviate
 this, either opt-in or opt-out; for example, adding `std::current_exception_with_stacktrace` or marking `catch` blocks containing `throw;` as requiring stacktrace.
 
-## Implementation experience
+# Implementation experience
 
 The following implementations are provided solely to demonstrate implementability; we anticipate that any Standard implementation would be significantly less ugly in both
 internals and in use.
 
-### Windows
+## Windows
 
 It is well known that the vendor-specific `__try` and `__except` keywords[[try-except]] (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked during search 
 phase, since the argument to the `__except` keyword is a *filter-expression* evaluated during search phase, to an enumeration indicating whether the consequent code block is to 
 be selected as the handler.  We present a proof-of-concept implementation[[poc]] (32-bit and 64-bit) adapted from an article by Howard Jeng[[jeng]].
 
-### Itanium
+## Itanium
 
 Although exception handling on Itanium is also two-phase, the handler selection mechanism is largely hidden from the user.  However, there is a workaround involving creating a
 type whose run-time type information (that is, its `typeid`) refers to an instance of a user-defined subclass of `std::type_info`.  This technique is not particularly widely known, but has been used 
 in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation[[poc]].
-
-## Acknowledgements
-
-Thank you especially to Antony Peacock for getting this paper ready for initial submission, and to Mathias Gaunard for inspiration, review and feedback.
