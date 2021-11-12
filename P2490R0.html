@@ -2114,7 +2114,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
        <ol class="toc">
         <li><a href="#runtime-cost"><span class="secno">1.2.1</span> <span class="content">Runtime cost</span></a>
         <li><a href="#old-third-party-libraries"><span class="secno">1.2.2</span> <span class="content">Old third-party libraries</span></a>
-        <li><a href="#exception-heavy-libraries"><span class="secno">1.2.3</span> <span class="content">Exception-heavy libraries</span></a>
+        <li><a href="#conflicting-requirements"><span class="secno">1.2.3</span> <span class="content">Conflicting requirements</span></a>
        </ol>
       <li><a href="#alternatives"><span class="secno">1.3</span> <span class="content">Alternatives</span></a>
       <li><a href="#acknowledgements"><span class="secno">1.4</span> <span class="content">Acknowledgements</span></a>
@@ -2161,10 +2161,10 @@ significant.</p>
    <p>Under the proposed mechanism, throw sites would need recompilation and/or relinking to participate in the facility.  It is entirely possible that third-party library code is
 shipped with its own implementations of the exception-raising mechanism, such that it would not participate in the facility until such time as the vendor recompiles and relinks
 the library, which may not come for years or even decades.</p>
-   <h4 class="heading settled" data-level="1.2.3" id="exception-heavy-libraries"><span class="secno">1.2.3. </span><span class="content">Exception-heavy libraries</span><a class="self-link" href="#exception-heavy-libraries"></a></h4>
+   <h4 class="heading settled" data-level="1.2.3" id="conflicting-requirements"><span class="secno">1.2.3. </span><span class="content">Conflicting requirements</span><a class="self-link" href="#conflicting-requirements"></a></h4>
    <p>Third-party library vendors who use exceptions for control flow may be expected to view the proposed facility negatively; if user code enables it via the proposed mechanism the
 cost will be considerable even for exceptions that are caught and handled successfully entirely within the third-party library.  Thus they are likely to disable the facility at
-API entry points, both negating the point of the facility for any exceptions that <em>do</em> "leak" out of the third-party library, and interfering with user code that expects it to
+API entry points, both negating the point of the facility for any exceptions that <em>do</em> leak out of the third-party library, and interfering with user code that expects it to
 remain enabled.</p>
    <h3 class="heading settled" data-level="1.3" id="alternatives"><span class="secno">1.3. </span><span class="content">Alternatives</span><a class="self-link" href="#alternatives"></a></h3>
    <p>We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.  On Windows this is structured exception handling<a data-link-type="biblio" href="#biblio-seh">[seh]</a>,

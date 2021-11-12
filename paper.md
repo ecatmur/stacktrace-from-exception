@@ -76,11 +76,11 @@ Under the proposed mechanism, throw sites would need recompilation and/or relink
 shipped with its own implementations of the exception-raising mechanism, such that it would not participate in the facility until such time as the vendor recompiles and relinks
 the library, which may not come for years or even decades.
 
-### Exception-heavy libraries
+### Conflicting requirements
 
 Third-party library vendors who use exceptions for control flow may be expected to view the proposed facility negatively; if user code enables it via the proposed mechanism the
 cost will be considerable even for exceptions that are caught and handled successfully entirely within the third-party library.  Thus they are likely to disable the facility at
-API entry points, both negating the point of the facility for any exceptions that *do* "leak" out of the third-party library, and interfering with user code that expects it to
+API entry points, both negating the point of the facility for any exceptions that *do* leak out of the third-party library, and interfering with user code that expects it to
 remain enabled.
 
 ## Alternatives
