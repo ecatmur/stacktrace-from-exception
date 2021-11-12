@@ -50,12 +50,12 @@ Editor: Ed Catmur, ed@catmur.uk
 
 ## Abstract
 
-This paper identifies concerns with part of the **Stacktrace from exception**[[p2370]] proposal.  We suggest alternate approaches and offer implementation experience of the
+This paper identifies concerns with part of the **Stacktrace from exception** [[p2370]] proposal.  We suggest alternate approaches and offer implementation experience of the
 techniques that could underly such alternatives.
 
 ## Background
 
-The paper **Stacktrace from exception**[[p2370]] amply sets out why it is desired to be able to access a stacktrace from exception; that is, when *handling* an exception it should be
+The paper **Stacktrace from exception** [[p2370]] amply sets out why it is desired to be able to access a stacktrace from exception; that is, when *handling* an exception it should be
 possible to retrieve a stacktrace from the (most recent) `throw` point of the exception, through the point of handling; and that this should be *transparent* to and not require
 *cooperation by* or *modification of* throwing code.  That paper acknowledges that the cost of taking a stacktrace on *every* exception throw would be prohibitive and proposes a
 mechanism to disable it via a standard library routine `std::this_thread::set_capture_stacktraces_at_throw` that will set a thread-local flag.
@@ -65,7 +65,7 @@ We argue that this mechanism still imposes a runtime cost and would not achieve 
 ### Runtime cost
 
 Accessing a thread-local variable has a cost in instructions and memory access; at present this could be argued to be lost in the "noise" of the existing exception handling
-machinery, particularly as this currently involves memory allocation, but in future if and when the **Zero-overhead deterministic exceptions: Throwing values**[[p0709]] proposal is adopted this will become relatively more
+machinery, particularly as this currently involves memory allocation, but in future if and when the **Zero-overhead deterministic exceptions: Throwing values** [[p0709]] proposal is adopted this will become relatively more
 significant.
 
 In any case even a *de minimis* runtime cost is not zero.
@@ -85,8 +85,8 @@ remain enabled.
 
 ## Alternatives
 
-We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.  On Windows this is structured exception handling[[seh]], 
-while on the Itanium ABI (used by most Unix-style OSes on x64-64) it is the Level I Base ABI[[itanium]].  This lower-level facility uses *two-phase* exception handling; in 
+We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.  On Windows this is structured exception handling [[seh]], 
+while on the Itanium ABI (used by most Unix-style OSes on x64-64) it is the Level I Base ABI [[itanium]].  This lower-level facility uses *two-phase* exception handling; in 
 the first, "search" phase the stack is walked from the throw point to identify a suitable handler, while in the second, "unwind" phase it is walked again from the 
 throw point to the selected handler, this time invoking cleanup (i.e., destructors) along the way. Importantly,
 
@@ -178,7 +178,7 @@ Drawbacks: new syntax, open to abuse, may not be safe to run general user code d
 
 # Concerns
 
-We do not know whether this mechanism is indeed implementible on all platforms.  We do know that (and, indeed, have practical experience to show that) it is 
+We do not know whether this mechanism is indeed implementible on all platforms.  We do know that (and, indeed, have practical experience [[#implementation-experience]] to show that) it is 
 implementable on two major platforms (i.e. Windows on Intel, and Unix-like on x86-64) that between them cover a dominant proportion of the market.  We would welcome 
 information regarding alternative platforms.
 
@@ -186,7 +186,7 @@ Third-party vendors who view secrecy as a virtue may be tempted to put `catch (.
 out.  In practice they can achieve much the same end by stripping debug symbols and obfuscating object names, and are likely to do so; meanwhile the same information is 
 available by attaching a debugger.
 
-Some of the proposed mechanisms are potentially confusing or open to abuse.
+Some of the proposed mechanisms [[#possible-syntaxes]] are potentially confusing or open to abuse.
 
 For a *rethrown* exception (using `throw;` or `std::rethrow_exception`) the stacktrace will only extend as far as the rethrow point.  We could provide mechanisms to alleviate
 this, either opt-in or opt-out; for example, adding `std::current_exception_with_stacktrace` or marking `catch` blocks containing `throw;` as requiring stacktrace.
@@ -198,12 +198,12 @@ internals and in use.
 
 ## Windows
 
-It is well known that the vendor-specific `__try` and `__except` keywords[[try-except]] (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked during search 
+It is well known that the vendor-specific `__try` and `__except` keywords [[try-except]] (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked during search 
 phase, since the argument to the `__except` keyword is a *filter-expression* evaluated during search phase, to an enumeration indicating whether the consequent code block is to 
-be selected as the handler.  We present a proof-of-concept implementation[[poc]] (32-bit and 64-bit) adapted from an article by Howard Jeng[[jeng]].
+be selected as the handler.  We present a proof-of-concept implementation [[poc]] (32-bit and 64-bit) adapted from an article by Howard Jeng [[jeng]].
 
 ## Itanium
 
 Although exception handling on Itanium is also two-phase, the handler selection mechanism is largely hidden from the user.  However, there is a workaround involving creating a
 type whose run-time type information (that is, its `typeid`) refers to an instance of a user-defined subclass of `std::type_info`.  This technique is not particularly widely known, but has been used 
-in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation[[poc]].
+in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation [[poc]].
