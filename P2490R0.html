@@ -2,7 +2,7 @@
  <head>
   <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
   <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport">
-  <title>P2490R1: Zero-overhead exception stacktraces</title>
+  <title>P2490R0: Zero-overhead exception stacktraces</title>
 <style data-fill-with="stylesheet">/******************************************************************************
  *                   Style sheet for the W3C specifications                   *
  *
@@ -2081,7 +2081,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
  <body class="h-entry">
   <div class="head">
    <p data-fill-with="logo"></p>
-   <h1 class="p-name no-ref" id="title">P2490R1<br>Zero-overhead exception stacktraces</h1>
+   <h1 class="p-name no-ref" id="title">P2490R0<br>Zero-overhead exception stacktraces</h1>
    <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2021-11-12">2021-11-12</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
@@ -2106,7 +2106,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    <h2 class="no-num no-toc no-ref" id="contents">Table of Contents</h2>
    <ol class="toc" role="directory">
     <li>
-     <a href="#zero-overhead-exception-stacktraces"><span class="secno">1</span> <span class="content">Zero-overhead exception stacktraces</span></a>
+     <a href="#overview"><span class="secno">1</span> <span class="content">Overview</span></a>
      <ol class="toc">
       <li><a href="#abstract"><span class="secno">1.1</span> <span class="content">Abstract</span></a>
       <li>
@@ -2116,22 +2116,24 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
         <li><a href="#old-third-party-libraries"><span class="secno">1.2.2</span> <span class="content">Old third-party libraries</span></a>
         <li><a href="#exception-heavy-libraries"><span class="secno">1.2.3</span> <span class="content">Exception-heavy libraries</span></a>
        </ol>
-      <li>
-       <a href="#alternatives"><span class="secno">1.3</span> <span class="content">Alternatives</span></a>
-       <ol class="toc">
-        <li><a href="#special-function"><span class="secno">1.3.1</span> <span class="content">Special function</span></a>
-        <li><a href="#default-parameter"><span class="secno">1.3.2</span> <span class="content">Default parameter</span></a>
-        <li><a href="#catch-with-init"><span class="secno">1.3.3</span> <span class="content">"catch-with-init"</span></a>
-        <li><a href="#expose-search-phase"><span class="secno">1.3.4</span> <span class="content">Expose search phase</span></a>
-       </ol>
-      <li><a href="#concerns"><span class="secno">1.4</span> <span class="content">Concerns</span></a>
-      <li>
-       <a href="#implementation-experience"><span class="secno">1.5</span> <span class="content">Implementation experience</span></a>
-       <ol class="toc">
-        <li><a href="#windows"><span class="secno">1.5.1</span> <span class="content">Windows</span></a>
-        <li><a href="#itanium"><span class="secno">1.5.2</span> <span class="content">Itanium</span></a>
-       </ol>
-      <li><a href="#acknowledgements"><span class="secno">1.6</span> <span class="content">Acknowledgements</span></a>
+      <li><a href="#alternatives"><span class="secno">1.3</span> <span class="content">Alternatives</span></a>
+      <li><a href="#acknowledgements"><span class="secno">1.4</span> <span class="content">Acknowledgements</span></a>
+      <li><a href="#revision-history"><span class="secno">1.5</span> <span class="content">Revision history</span></a>
+     </ol>
+    <li>
+     <a href="#possible-syntaxes"><span class="secno">2</span> <span class="content">Possible syntaxes</span></a>
+     <ol class="toc">
+      <li><a href="#special-function"><span class="secno">2.1</span> <span class="content">Special function</span></a>
+      <li><a href="#default-parameter"><span class="secno">2.2</span> <span class="content">Default parameter</span></a>
+      <li><a href="#catch-with-init"><span class="secno">2.3</span> <span class="content">"catch-with-init"</span></a>
+      <li><a href="#expose-search-phase"><span class="secno">2.4</span> <span class="content">Expose search phase</span></a>
+     </ol>
+    <li><a href="#concerns"><span class="secno">3</span> <span class="content">Concerns</span></a>
+    <li>
+     <a href="#implementation-experience"><span class="secno">4</span> <span class="content">Implementation experience</span></a>
+     <ol class="toc">
+      <li><a href="#windows"><span class="secno">4.1</span> <span class="content">Windows</span></a>
+      <li><a href="#itanium"><span class="secno">4.2</span> <span class="content">Itanium</span></a>
      </ol>
     <li>
      <a href="#references"><span class="secno"></span> <span class="content">References</span></a>
@@ -2141,7 +2143,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    </ol>
   </nav>
   <main>
-   <h2 class="heading settled" data-level="1" id="zero-overhead-exception-stacktraces"><span class="secno">1. </span><span class="content">Zero-overhead exception stacktraces</span><a class="self-link" href="#zero-overhead-exception-stacktraces"></a></h2>
+   <h2 class="heading settled" data-level="1" id="overview"><span class="secno">1. </span><span class="content">Overview</span><a class="self-link" href="#overview"></a></h2>
    <h3 class="heading settled" data-level="1.1" id="abstract"><span class="secno">1.1. </span><span class="content">Abstract</span><a class="self-link" href="#abstract"></a></h3>
    <p>This paper identifies concerns with part of the <strong>Stacktrace from exception</strong><a data-link-type="biblio" href="#biblio-p2370">[p2370]</a> proposal.  We suggest alternate approaches and offer implementation experience of the
 techniques that could underly such alternatives.</p>
@@ -2194,8 +2196,17 @@ throw point to the selected handler, this time invoking cleanup (i.e., destructo
     <li data-md>
      <p><em>zero-cost</em>: if the search phase does not reach a <code class="highlight"><c- k>catch</c-></code> block so marked (i.e., if the exception is caught and handled internally) then behavior is entirely unaffected.</p>
    </ul>
+   <h3 class="heading settled" data-level="1.4" id="acknowledgements"><span class="secno">1.4. </span><span class="content">Acknowledgements</span><a class="self-link" href="#acknowledgements"></a></h3>
+   <p>Thank you especially to Antony Peacock for getting this paper ready for initial submission, and to Mathias Gaunard for inspiration, review and feedback.</p>
+   <h3 class="heading settled" data-level="1.5" id="revision-history"><span class="secno">1.5. </span><span class="content">Revision history</span><a class="self-link" href="#revision-history"></a></h3>
+   <dl>
+    <dt data-md>R0
+    <dd data-md>
+     <p>Initial revision; incorporated informal feedback.</p>
+   </dl>
+   <h2 class="heading settled" data-level="2" id="possible-syntaxes"><span class="secno">2. </span><span class="content">Possible syntaxes</span><a class="self-link" href="#possible-syntaxes"></a></h2>
    <p>We now propose a number of possible syntaxes for user code to opt in to the mechanism and retrieve the stored stacktrace.</p>
-   <h4 class="heading settled" data-level="1.3.1" id="special-function"><span class="secno">1.3.1. </span><span class="content">Special function</span><a class="self-link" href="#special-function"></a></h4>
+   <h3 class="heading settled" data-level="2.1" id="special-function"><span class="secno">2.1. </span><span class="content">Special function</span><a class="self-link" href="#special-function"></a></h3>
    <p>Under this mechanism, a <code class="highlight"><c- k>catch</c-></code> block that contains a potentially-evaluated call to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>()</c-></code> is marked as requiring a stacktrace to be taken
 during search phase:</p>
 <pre class="language-c++ highlight"><c- n>try</c-> <c- p>{</c->
@@ -2206,7 +2217,7 @@ during search phase:</p>
 </pre>
    <p>Drawback: if the call is moved out of the <code class="highlight"><c- k>catch</c-></code> block, e.g. to a helper function, or even perhaps to a lambda within it, the facility will cease to work.
 Possible workaround: make <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>()</c-></code> ill-formed when called from anywhere other than a <code class="highlight"><c- k>catch</c-></code> block - this could be ugly.</p>
-   <h4 class="heading settled" data-level="1.3.2" id="default-parameter"><span class="secno">1.3.2. </span><span class="content">Default parameter</span><a class="self-link" href="#default-parameter"></a></h4>
+   <h3 class="heading settled" data-level="2.2" id="default-parameter"><span class="secno">2.2. </span><span class="content">Default parameter</span><a class="self-link" href="#default-parameter"></a></h3>
 <pre class="language-c++ highlight"><c- n>try</c-> <c- p>{</c->
     <c- p>...</c->
 <c- p>}</c-> <c- n>catch</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>exception</c-><c- o>&amp;</c-> <c- n>ex</c-><c- p>,</c-> <c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-> <c- n>st</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>())</c-> <c- p>{</c->
@@ -2215,7 +2226,7 @@ Possible workaround: make <code class="highlight"><c- n>std</c-><c- o>::</c-><c-
 </pre>
    <p>This can be understood by analogy to <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>source_location</c-><c- o>::</c-><c- n>current</c-><c- p>()</c-></code> which similarly has special behavior in particular contexts.</p>
    <p>Drawbacks: new syntax, could be understood as providing multiple types to be caught.</p>
-   <h4 class="heading settled" data-level="1.3.3" id="catch-with-init"><span class="secno">1.3.3. </span><span class="content">"catch-with-init"</span><a class="self-link" href="#catch-with-init"></a></h4>
+   <h3 class="heading settled" data-level="2.3" id="catch-with-init"><span class="secno">2.3. </span><span class="content">"catch-with-init"</span><a class="self-link" href="#catch-with-init"></a></h3>
 <pre class="language-c++ highlight"><c- n>try</c-> <c- p>{</c->
     <c- p>...</c->
 <c- p>}</c-> <c- n>catch</c-><c- p>(</c-><c- k>auto</c-> <c- n>st</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>current</c-><c- p>();</c-> <c- n>std</c-><c- o>::</c-><c- n>exception</c-><c- o>&amp;</c-> <c- n>ex</c-><c- p>)</c-> <c- p>{</c->
@@ -2224,7 +2235,7 @@ Possible workaround: make <code class="highlight"><c- n>std</c-><c- o>::</c-><c-
 </pre>
    <p>Here we add an (optional) <em>init-statement</em> to the <code class="highlight"><c- k>catch</c-></code> clause, to be executed before unwind (if the catch clause is selected).</p>
    <p>Drawbacks: new syntax, may not be safe to run general user code during search phase.</p>
-   <h4 class="heading settled" data-level="1.3.4" id="expose-search-phase"><span class="secno">1.3.4. </span><span class="content">Expose search phase</span><a class="self-link" href="#expose-search-phase"></a></h4>
+   <h3 class="heading settled" data-level="2.4" id="expose-search-phase"><span class="secno">2.4. </span><span class="content">Expose search phase</span><a class="self-link" href="#expose-search-phase"></a></h3>
 <pre class="language-c++ highlight"><c- n>try</c-> <c- p>{</c->
     <c- p>...</c->
 <c- p>}</c-> <c- n>catch</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>exception</c-><c- o>&amp;</c-> <c- n>ex</c-><c- p>)</c-> <c- k>if</c-> <c- p>(</c-><c- k>auto</c-> <c- n>st</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>current</c-><c- p>();</c-> true<c- p>)</c-> <c- p>{</c->
@@ -2232,7 +2243,7 @@ Possible workaround: make <code class="highlight"><c- n>std</c-><c- o>::</c-><c-
 <c- p>}</c->
 </pre>
    <p>Drawbacks: new syntax, open to abuse, may not be safe to run general user code during search phase.</p>
-   <h3 class="heading settled" data-level="1.4" id="concerns"><span class="secno">1.4. </span><span class="content">Concerns</span><a class="self-link" href="#concerns"></a></h3>
+   <h2 class="heading settled" data-level="3" id="concerns"><span class="secno">3. </span><span class="content">Concerns</span><a class="self-link" href="#concerns"></a></h2>
    <p>We do not know whether this mechanism is indeed implementible on all platforms.  We do know that (and, indeed, have practical experience to show that) it is
 implementable on two major platforms (i.e. Windows on Intel, and Unix-like on x86-64) that between them cover a dominant proportion of the market.  We would welcome 
 information regarding alternative platforms.</p>
@@ -2242,19 +2253,17 @@ available by attaching a debugger.</p>
    <p>Some of the proposed mechanisms are potentially confusing or open to abuse.</p>
    <p>For a <em>rethrown</em> exception (using <code class="highlight"><c- k>throw</c-><c- p>;</c-></code> or <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>rethrow_exception</c-></code>) the stacktrace will only extend as far as the rethrow point.  We could provide mechanisms to alleviate
 this, either opt-in or opt-out; for example, adding <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>current_exception_with_stacktrace</c-></code> or marking <code class="highlight"><c- k>catch</c-></code> blocks containing <code class="highlight"><c- k>throw</c-><c- p>;</c-></code> as requiring stacktrace.</p>
-   <h3 class="heading settled" data-level="1.5" id="implementation-experience"><span class="secno">1.5. </span><span class="content">Implementation experience</span><a class="self-link" href="#implementation-experience"></a></h3>
+   <h2 class="heading settled" data-level="4" id="implementation-experience"><span class="secno">4. </span><span class="content">Implementation experience</span><a class="self-link" href="#implementation-experience"></a></h2>
    <p>The following implementations are provided solely to demonstrate implementability; we anticipate that any Standard implementation would be significantly less ugly in both
 internals and in use.</p>
-   <h4 class="heading settled" data-level="1.5.1" id="windows"><span class="secno">1.5.1. </span><span class="content">Windows</span><a class="self-link" href="#windows"></a></h4>
+   <h3 class="heading settled" data-level="4.1" id="windows"><span class="secno">4.1. </span><span class="content">Windows</span><a class="self-link" href="#windows"></a></h3>
    <p>It is well known that the vendor-specific <code class="highlight"><c- kr>__try</c-></code> and <code class="highlight"><c- kr>__except</c-></code> keywords<a data-link-type="biblio" href="#biblio-try-except">[try-except]</a> (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked during search
 phase, since the argument to the <code class="highlight"><c- kr>__except</c-></code> keyword is a <em>filter-expression</em> evaluated during search phase, to an enumeration indicating whether the consequent code block is to 
 be selected as the handler.  We present a proof-of-concept implementation<a data-link-type="biblio" href="#biblio-poc">[poc]</a> (32-bit and 64-bit) adapted from an article by Howard Jeng<a data-link-type="biblio" href="#biblio-jeng">[jeng]</a>.</p>
-   <h4 class="heading settled" data-level="1.5.2" id="itanium"><span class="secno">1.5.2. </span><span class="content">Itanium</span><a class="self-link" href="#itanium"></a></h4>
+   <h3 class="heading settled" data-level="4.2" id="itanium"><span class="secno">4.2. </span><span class="content">Itanium</span><a class="self-link" href="#itanium"></a></h3>
    <p>Although exception handling on Itanium is also two-phase, the handler selection mechanism is largely hidden from the user.  However, there is a workaround involving creating a
 type whose run-time type information (that is, its <code class="highlight"><c- k>typeid</c-></code>) refers to an instance of a user-defined subclass of <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>type_info</c-></code>.  This technique is not particularly widely known, but has been used 
 in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation<a data-link-type="biblio" href="#biblio-poc">[poc]</a>.</p>
-   <h3 class="heading settled" data-level="1.6" id="acknowledgements"><span class="secno">1.6. </span><span class="content">Acknowledgements</span><a class="self-link" href="#acknowledgements"></a></h3>
-   <p>Thank you especially to Antony Peacock for getting this paper ready for initial submission, and to Mathias Gaunard for inspiration, review and feedback.</p>
   </main>
 <script>
 (function() {
