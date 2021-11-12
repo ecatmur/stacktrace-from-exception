@@ -13,17 +13,23 @@ Markup Shorthands: markdown yes
 Markup Shorthands: biblio yes
 Editor: Ed Catmur, ed@catmur.uk
 </pre>
+<pre class='biblio'>
+{
+    "p2370": {"title": "Stacktrace from exception",
+        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2370r1.html"}
+}
+</pre>
 
 # Zero-overhead exception stacktraces
 
 ## 1. Abstract
 
-This paper identifies concerns with part of the **Stacktrace from exception**[^p2370] proposal.  We suggest alternate approaches and offer implementation experience of the
+This paper identifies concerns with part of the **Stacktrace from exception**[[p2370]] proposal.  We suggest alternate approaches and offer implementation experience of the
 techniques that could underly such alternatives.
 
 ## 2. Background
 
-The paper **Stacktrace from exception**[^p2370] amply sets out why it is desired to be able to access a stacktrace from exception; that is, when *handling* an exception it should be
+The paper **Stacktrace from exception**[[p2370]] amply sets out why it is desired to be able to access a stacktrace from exception; that is, when *handling* an exception it should be
 possible to retrieve a stacktrace from the (most recent) `throw` point of the exception, through the point of handling; and that this should be *transparent* to and not require
 *cooperation by* or *modification of* throwing code.  That paper acknowledges that the cost of taking a stacktrace on *every* exception throw would be prohibitive and proposes a
 mechanism to disable it via a standard library routine `std::this_thread::set_capture_stacktraces_at_throw` that will set a thread-local flag.
@@ -157,7 +163,6 @@ Thank you especially to Antony Peacock for getting this paper ready for initial 
 
 [^jeng]: The Visual C++ Exception Model
  https://www.gamedev.net/tutorials/programming/general-and-gameplay-programming/the-visual-c-exception-model-r2488/
-[^p2370]: Stacktrace from exception http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2370r1.html
 [^itanium]: C++ ABI for Itanium: Exception Handling https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html
 [^seh]: Structured Exception Handling (C/C++) https://docs.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp
 [^p0709]: Zero-overhead deterministic exceptions: Throwing values http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0709r4.pdf
