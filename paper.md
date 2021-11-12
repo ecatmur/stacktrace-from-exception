@@ -15,19 +15,45 @@ Editor: Ed Catmur, ed@catmur.uk
 </pre>
 <pre class='biblio'>
 {
-    "p2370": {"title": "Stacktrace from exception",
-        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2370r1.html"}
+    "p2370": {
+        "title": "Stacktrace from exception",
+        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2370r1.html"
+    },
+    "jeng": {
+        "title": "The Visual C++ Exception Model",
+        "href": "https://www.gamedev.net/tutorials/programming/general-and-gameplay-programming/the-visual-c-exception-model-r2488/"
+    },
+    "itanium": {
+        "title": "C++ ABI for Itanium: Exception Handling",
+        "href": "https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html"
+    },
+    "seh": {
+        "title": "Structured Exception Handling (C/C++)",
+        "href": "https://docs.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp"
+    },
+    "p0709": {
+        "title": "Zero-overhead deterministic exceptions: Throwing values",
+        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0709r4.pdf"
+    },
+    "try-except": {
+        "title": "`try-except` statement",
+        "href": "https://docs.microsoft.com/en-us/cpp/cpp/try-except-statement"
+    },
+    "poc": {
+        "title": "Proof-of-concept implementation.",
+        "href": "https://github.com/ecatmur/stacktrace-from-exception/blob/main/stacktrace-from-exception.cpp"
+    }
 }
 </pre>
 
 # Zero-overhead exception stacktraces
 
-## 1. Abstract
+## Abstract
 
 This paper identifies concerns with part of the **Stacktrace from exception**[[p2370]] proposal.  We suggest alternate approaches and offer implementation experience of the
 techniques that could underly such alternatives.
 
-## 2. Background
+## Background
 
 The paper **Stacktrace from exception**[[p2370]] amply sets out why it is desired to be able to access a stacktrace from exception; that is, when *handling* an exception it should be
 possible to retrieve a stacktrace from the (most recent) `throw` point of the exception, through the point of handling; and that this should be *transparent* to and not require
@@ -36,29 +62,31 @@ mechanism to disable it via a standard library routine `std::this_thread::set_ca
 
 We argue that this mechanism still imposes a runtime cost and would not achieve the aims of the paper for the proposed facility.
 
-### 2.1. Runtime cost
+### Runtime cost
 
 Accessing a thread-local variable has a cost in instructions and memory access; at present this could be argued to be lost in the "noise" of the existing exception handling
-machinery, particularly as this currently involves memory allocation, but in future if and when the **Zero-overhead deterministic exceptions: Throwing values**[^p0709] proposal is adopted this will become relatively more
-significant.  In any case even a *de minimis* runtime cost is not zero.
+machinery, particularly as this currently involves memory allocation, but in future if and when the **Zero-overhead deterministic exceptions: Throwing values**[[p0709]] proposal is adopted this will become relatively more
+significant.
 
-### 2.2. Old third-party libraries
+In any case even a *de minimis* runtime cost is not zero.
+
+### Old third-party libraries
 
 Under the proposed mechanism, throw sites would need recompilation and/or relinking to participate in the facility.  It is entirely possible that third-party library code is
 shipped with its own implementations of the exception-raising mechanism, such that it would not participate in the facility until such time as the vendor recompiles and relinks
 the library, which may not come for years or even decades.
 
-### 2.3. Exception-heavy libraries
+### Exception-heavy libraries
 
 Third-party library vendors who use exceptions for control flow may be expected to view the proposed facility negatively; if user code enables it via the proposed mechanism the
 cost will be considerable even for exceptions that are caught and handled successfully entirely within the third-party library.  Thus they are likely to disable the facility at
 API entry points, both negating the point of the facility for any exceptions that *do* "leak" out of the third-party library, and interfering with user code that expects it to
 remain enabled.
 
-## 3. Alternatives
+## Alternatives
 
-We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.  On Windows this is structured exception handling[^seh], 
-while on the Itanium ABI (used by most Unix-style OSes on x64-64) it is the Level I Base ABI[^itanium].  This lower-level facility uses *two-phase* exception handling; in 
+We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.  On Windows this is structured exception handling[[seh]], 
+while on the Itanium ABI (used by most Unix-style OSes on x64-64) it is the Level I Base ABI[[itanium]].  This lower-level facility uses *two-phase* exception handling; in 
 the first, "search" phase the stack is walked from the throw point to identify a suitable handler, while in the second, "unwind" phase it is walked again from the 
 throw point to the selected handler, this time invoking cleanup (i.e., destructors) along the way. Importantly,
 
@@ -81,7 +109,7 @@ The advantages of this approach are twofold:
 
 We now propose a number of possible syntaxes for user code to opt in to the mechanism and retrieve the stored stacktrace.
 
-### 3.1. Special function
+### Special function
 
 Under this mechanism, a `catch` block that contains a potentially-evaluated call to `std::stacktrace::from_current_exception()` is marked as requiring a stacktrace to be taken
 during search phase:
@@ -97,7 +125,7 @@ try {
 Drawback: if the call is moved out of the `catch` block, e.g. to a helper function, or even perhaps to a lambda within it, the facility will cease to work.
 Possible workaround: make `std::stacktrace::from_current_exception()` ill-formed when called from anywhere other than a `catch` block - this could be ugly.
 
-### 3.2. Default parameter
+### Default parameter
 
 ```c++
 try {
@@ -109,9 +137,23 @@ try {
 
 This can be understood by analogy to `std::source_location::current()` which similarly has special behavior in particular contexts.
 
-Drawbacks: uses up syntax, could be understood as providing multiple types to be caught.
+Drawbacks: new syntax, could be understood as providing multiple types to be caught.
 
-### 3.3. Expose search phase
+### "catch-with-init"
+
+```c++
+try {
+    ...
+} catch(auto st = std::stacktrace::current(); std::exception& ex) {
+    std::cout << ex.what() << "\n" << st << std::endl;
+}
+```
+
+Here we add an (optional) *init-statement* to the `catch` clause, to be executed before unwind (if the catch clause is selected).
+
+Drawbacks: new syntax, may not be safe to run general user code during search phase.
+
+### Expose search phase
 
 ```c++
 try {
@@ -123,11 +165,11 @@ try {
 
 Drawbacks: new syntax, open to abuse, may not be safe to run general user code during search phase.
 
-## 4. Concerns
+## Concerns
 
 We do not know whether this mechanism is indeed implementible on all platforms.  We do know that (and, indeed, have practical experience to show that) it is 
 implementable on two major platforms (i.e. Windows on Intel, and Unix-like on x86-64) that between them cover a dominant proportion of the market.  We would welcome 
-information regarding minority platforms.
+information regarding alternative platforms.
 
 Third-party vendors who view secrecy as a virtue may be tempted to put `catch (...)` blocks at API entry points to prevent information on their library internals leaking 
 out.  In practice they can achieve much the same end by stripping debug symbols and obfuscating object names, and are likely to do so; meanwhile the same information is 
@@ -138,33 +180,23 @@ Some of the proposed mechanisms are potentially confusing or open to abuse.
 For a *rethrown* exception (using `throw;` or `std::rethrow_exception`) the stacktrace will only extend as far as the rethrow point.  We could provide mechanisms to alleviate
 this, either opt-in or opt-out; for example, adding `std::current_exception_with_stacktrace` or marking `catch` blocks containing `throw;` as requiring stacktrace.
 
-## 5. Implementation experience
+## Implementation experience
 
 The following implementations are provided solely to demonstrate implementability; we anticipate that any Standard implementation would be significantly less ugly in both
 internals and in use.
 
-### 5.1. Windows
+### Windows
 
-It is well known that the vendor-specific `__try` and `__except` keywords[^try-except] (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked during search 
+It is well known that the vendor-specific `__try` and `__except` keywords[[try-except]] (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked during search 
 phase, since the argument to the `__except` keyword is a *filter-expression* evaluated during search phase, to an enumeration indicating whether the consequent code block is to 
-be selected as the handler.  We present a proof-of-concept implementation[^poc] (32-bit and 64-bit) adapted from an article by Howard Jeng[^jeng].
+be selected as the handler.  We present a proof-of-concept implementation[[poc]] (32-bit and 64-bit) adapted from an article by Howard Jeng[[jeng]].
 
-### 5.2. Itanium
+### Itanium
 
 Although exception handling on Itanium is also two-phase, the handler selection mechanism is largely hidden from the user.  However, there is a workaround involving creating a
 type whose run-time type information (that is, its `typeid`) refers to an instance of a user-defined subclass of `std::type_info`.  This technique is not particularly widely known, but has been used 
-in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation[^poc].
+in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation[[poc]].
 
-## 6. Acknowledgements
+## Acknowledgements
 
 Thank you especially to Antony Peacock for getting this paper ready for initial submission, and to Mathias Gaunard for inspiration, review and feedback.
-
-## 7. References
-
-[^jeng]: The Visual C++ Exception Model
- https://www.gamedev.net/tutorials/programming/general-and-gameplay-programming/the-visual-c-exception-model-r2488/
-[^itanium]: C++ ABI for Itanium: Exception Handling https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html
-[^seh]: Structured Exception Handling (C/C++) https://docs.microsoft.com/en-us/cpp/cpp/structured-exception-handling-c-cpp
-[^p0709]: Zero-overhead deterministic exceptions: Throwing values http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0709r4.pdf
-[^try-except]: `try-except` statement https://docs.microsoft.com/en-us/cpp/cpp/try-except-statement
-[^poc]: Proof-of-concept implementation. https://github.com/ecatmur/stacktrace-from-exception/blob/main/stacktrace-from-exception.cpp
