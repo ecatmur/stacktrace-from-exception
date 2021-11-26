@@ -2,7 +2,7 @@
 Title:  Zero-overhead exception stacktraces
 Shortname: P2490
 URL: https://wg21.link/P2490
-Revision: 0
+Revision: 1
 Audience: LEWG
 Status: P
 Group: WG21
@@ -128,7 +128,7 @@ during search phase:
 ```c++
 try {
     ...
-} catch(std::exception& ex) {
+} catch (std::exception& ex) {
     std::cout << ex.what() << "\n" << std::stacktrace::from_current_exception() << std::endl;
 }
 ```
@@ -141,7 +141,7 @@ Possible workaround: make `std::stacktrace::from_current_exception()` ill-formed
 ```c++
 try {
     ...
-} catch(std::exception& ex, std::stacktrace st = std::stacktrace::from_current_exception()) {
+} catch (std::exception& ex, std::stacktrace st = std::stacktrace::from_current_exception()) {
     std::cout << ex.what() << "\n" << st << std::endl;
 }
 ```
@@ -155,7 +155,7 @@ Drawbacks: new syntax, could be understood as providing multiple types to be cau
 ```c++
 try {
     ...
-} catch(auto st = std::stacktrace::current(); std::exception& ex) {
+} catch (auto st = std::stacktrace::current(); std::exception& ex) {
     std::cout << ex.what() << "\n" << st << std::endl;
 }
 ```
@@ -169,12 +169,31 @@ Drawbacks: new syntax, may not be safe to run general user code during search ph
 ```c++
 try {
     ...
-} catch(std::exception& ex) if (auto st = std::stacktrace::current(); true) {
+} catch (std::exception& ex) if (auto st = std::stacktrace::current(); true) {
     std::cout << ex.what() << "\n" << st << std::endl;
 }
 ```
 
 Drawbacks: new syntax, open to abuse, may not be safe to run general user code during search phase.
+
+## Wrapper type
+
+(Credit: Jonathan Wakely)
+
+```c++
+try {
+    ...
+} catch (std::with_stacktrace<std::exception> e) {
+    std::cout << e.get_exception().what() << "\n" << e.get_stacktrace() << std::endl;
+}
+```
+
+This would require special-case handling by the unwind mechanism to match the wrapped exception type, but no changes to C++ grammar.
+
+### Questions
+
+* How to `catch (...)` - perhaps `catch (std::with_stacktrace<> e)` (empty argument list)?
+* Can template parameter `E` be cvref qualified? - probably `const` yes, volatile and reference no, since `get_exception()` returns by reference anyway. To reinforce this, `std::with_stacktrace` should have all its special member functions deleted or inaccessible.
 
 # Concerns
 
