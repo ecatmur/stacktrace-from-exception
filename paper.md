@@ -261,9 +261,9 @@ It has been suggested that the Standard may wish to provide an attribute for use
 
 ## Rethrow
 
-For a *rethrown* exception (using `throw;`, `rethrow_exception`, `throw_with_nested`, etc.) the stacktrace will be truncated from the rethrow point.  We could provide mechanisms to alleviate this; for example, we could specify that `throw;` preserves stacktrace (specifically, that the accompanying stacktrace of a rethrown exception begins with the stacktrace captured in its containing `catch`).
+For a *rethrown* exception (using `throw;`, `rethrow_exception`, `throw_with_nested`, etc.) the stacktrace will be truncated from the rethrow point.  We could provide mechanisms to alleviate this; for example, we could specify that `throw;` preserves stacktrace (specifically, that the accompanying stacktrace of a rethrown exception begins with the stacktrace captured for the use of its containing `catch`).
 
-Since `throw;` may be placed within a nested function invocation, this could result in non-contiguous, self-overlapping stacktraces. At present, in the light of the complication and potential confusion arising, we choose not to pursue this.
+However, since `throw;` may be placed within a nested function invocation, the resulting chained stacktrace could either be non-contiguous, indeed self-overlapping (if it restarts from `throw;`) or, if it does not restart, omit important information (the stack from the catch clause to the rethrow point, showing how and why the exception was rethrown). At present, in the light of the complication and potential confusion arising, we choose not to pursue this.
 
 An alternative approach could be to extend `throw_with_nested` to accept a stacktrace and store it in `nested_exception` or a derived class. Since this would be a pure library extension, we are not pursuing it in this paper but leave it open for future direction.
 
