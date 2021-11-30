@@ -42,6 +42,10 @@ Editor: Ed Catmur, ed@catmur.uk
     "poc": {
         "title": "Proof-of-concept implementation.",
         "href": "https://github.com/ecatmur/stacktrace-from-exception/blob/main/stacktrace-from-exception.cpp"
+    },
+    "python": {
+        "title": "sys — System-specific parameters and functions",
+        "href": "https://docs.python.org/3/library/sys.html#sys.exc_info"
     }
 }
 </pre>
@@ -109,12 +113,14 @@ The advantages of this approach are twofold:
 
 ## Acknowledgements
 
-Thank you especially to Antony Peacock for getting this paper ready for initial submission, and to Mathias Gaunard for inspiration, review and feedback.
+Thank you especially to Antony Peacock for getting this paper ready for initial submission, and to Mathias Gaunard for inspiration, review and feedback. Thank you also to Jonathan Wakely and to members of BSI IST/5/-/21 (C++) panel for review and feedback.
 
 ## Revision history
 
 : R0
 :: Initial revision; incorporated informal feedback.
+: R1
+:: Add `with_stacktrace` proposed syntax; add additional parameter (non-default) syntax.
 
 # Possible syntaxes
 
@@ -135,6 +141,22 @@ try {
 
 Drawback: if the call is moved out of the `catch` block, e.g. to a helper function, or even perhaps to a lambda within it, the facility will cease to work.
 Possible workaround: make `std::stacktrace::from_current_exception()` ill-formed when called from anywhere other than a `catch` block - this could be ugly.
+
+## Additional parameter
+
+(Gašper Azman / Bronek Kozicki)
+
+```c++
+try {
+    ...
+} catch (std::exception& ex, std::stacktrace st) {
+    std::cout << ex.what() << "\n" << st << std::endl;
+}
+```
+
+This shows some similarity to Python [[python]], where `sys.exc_info` yields a tuple of exception and traceback.
+
+Drawbacks: new syntax, could be understood as providing multiple types to be caught.
 
 ## Default parameter
 
@@ -183,32 +205,90 @@ Drawbacks: new syntax, open to abuse, may not be safe to run general user code d
 ```c++
 try {
     ...
-} catch (std::with_stacktrace<std::exception> e) {
+} catch (std::with_stacktrace<std::exception&> e) {
     std::cout << e.get_exception().what() << "\n" << e.get_stacktrace() << std::endl;
 }
 ```
 
-This would require special-case handling by the unwind mechanism to match the wrapped exception type, but no changes to C++ grammar.
+This would require special-case handling by the unwind mechanism to match the wrapped exception type, but no changes to C++ grammar. Indeed, on many platforms it can be implemented [[#implementation-experience]] with only changes to the library.
 
-### Questions
+Issue(ecatmur/stacktrace-from-exception#10): EC todo impl with_stacktrace
 
-* How to `catch (...)` - perhaps `catch (std::with_stacktrace<> e)` (empty argument list)?
-* Can template parameter `E` be cvref qualified? - probably `const` yes, volatile and reference no, since `get_exception()` returns by reference anyway. To reinforce this, `std::with_stacktrace` should have all its special member functions deleted or inaccessible.
+Drawbacks: greater verbosity compared to syntaxes where `ex` and `st` are separate variables.
+
+* How to `catch (...)` - perhaps `catch (std::with_stacktrace<> e)` (empty template argument list), or `std::with_stacktrace<void>`?
+* Can template parameter `E` be cvref qualified? - probably yes, to minimize code changes; this means that `get_exception()` should return by reference, but the returned reference should refer to the exception object when `E` is a reference type, and to a copy of the exception object otherwise.
+
+Sketch:
+
+```c++
+template<class E, class Allocator = std::allocator<std::stacktrace_entry>, size_t max_depth = -1>
+struct with_stacktrace {
+    using exception_type = conditional_t<is_array_v<E>, remove_extent_t<E>*, conditional_t<is_function_v<E>, E*, E>>;
+    using stacktrace_type = basic_stacktrace<Allocator>;
+    exception_type& get_exception() const noexcept requires (not is_void_v<E>);
+    stacktrace_type& get_stacktrace() const;
+};
+```
 
 # Concerns
 
+## Implementability
+
 We do not know whether this mechanism is indeed implementible on all platforms.  We do know that (and, indeed, have practical experience [[#implementation-experience]] to show that) it is 
 implementable on two major platforms (i.e. Windows on Intel, and Unix-like on x86-64) that between them cover a dominant proportion of the market.  We would welcome 
-information regarding alternative platforms.
+information regarding other platforms.
+
+### Platform survey
+
+Issue(ecatmur/stacktrace-from-exception#9): EC todo platform survey
+
+### Fallback
+
+Any platform with two-phase lookup and dynamic search phase is suitable for implementation of the proposed mechanism. For platforms that do not fall under this description, a suitable fallback could be to store a thread-local flag as in [[p2370]], that instructs the exception mechanism to take a stacktrace at the point of `throw`. This flag would be set to `true` on entry to a `try` block with accompanying `catch` block marked as requiring stacktrace, to `false` on entry to `noexcept` functions and to `try` blocks with accompanying `catch(...)` block not marked as requiring stacktrace, and restored to its previous value during stack unwinding.
+
+This would still have the advantage over the suggested API in [[p2370]] that the `capture_stacktraces_at_throw` flag would be hidden and automatically set or restored to the appropriate value according to whether a stacktrace is desired in a particular (dynamic) scope.
+
+Alternatively, vendors could choose to not provide support for the facility, or (under QOI) to provide a stub implementation.
+
+## Secrecy
 
 Third-party vendors who view secrecy as a virtue may be tempted to put `catch (...)` blocks at API entry points to prevent information on their library internals leaking 
 out.  In practice they can achieve much the same end by stripping debug symbols and obfuscating object names, and are likely to do so; meanwhile the same information is 
 available by attaching a debugger.
 
-Some of the proposed mechanisms [[#possible-syntaxes]] are potentially confusing or open to abuse.
+It has been suggested that the Standard may wish to provide an attribute for library authors to denote that a stack frame should be omitted from stack traces. We consider this out of scope for this proposal.
 
-For a *rethrown* exception (using `throw;` or `std::rethrow_exception`) the stacktrace will only extend as far as the rethrow point.  We could provide mechanisms to alleviate
-this, either opt-in or opt-out; for example, adding `std::current_exception_with_stacktrace` or marking `catch` blocks containing `throw;` as requiring stacktrace.
+## Rethrow
+
+For a *rethrown* exception (using `throw;`, `rethrow_exception`, `throw_with_nested`, etc.) the stacktrace will be truncated from the rethrow point.  We could provide mechanisms to alleviate this; for example, we could specify that `throw;` preserves stacktrace (specifically, that the accompanying stacktrace of a rethrown exception begins with the stacktrace captured in its containing `catch`).
+
+Since `throw;` may be placed within a nested function invocation, this could result in non-contiguous, self-overlapping stacktraces. At present, in the light of the complication and potential confusion arising, we choose not to pursue this.
+
+An alternative approach could be to extend `throw_with_nested` to accept a stacktrace and store it in `nested_exception` or a derived class. Since this would be a pure library extension, we are not pursuing it in this paper but leave it open for future direction.
+
+## Coroutines
+
+The body of a coroutine is defined as-if containing a catch-all block:
+
+```c++
+try {
+    co_await promise.initial_suspend();
+    function-body
+} catch (...) {
+    if (!initial-await-resume-called)
+        throw;
+    promise.unhandled_exception();
+}
+```
+
+This poses two problems: firstly, the stacktrace is truncated by the rethrow, and secondly it is not available to `unhandled_exception`. We tentatively suggest that the rethrow should be defined as preserving the stacktrace (this can be achieved by only installing the exception handler at the point of initial await-resume), and that `unhandled_exception` should be passed an appropriate stacktrace object where that call is well-formed.
+
+## Allocation
+
+Some syntaxes allow the user to supply an allocator; this is desirable for performance and/or latency.  In this case it would be preferable to also allow the user to supply a `max_depth` (but not `skip`) parameter as supplied to `basic_stacktrace::current()`, so that the stacktrace can if desired be constructed into a fixed-size buffer with no allocation overhead during unwinding.
+
+On the other hand, allowing the user to supply an allocator opens the door to abuse (running arbitrary user code during unwinding).
 
 # Implementation experience
 
