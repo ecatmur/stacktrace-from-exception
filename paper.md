@@ -257,7 +257,7 @@ Third-party vendors who view secrecy as a virtue may be tempted to put `catch (.
 out.  In practice they can achieve much the same end by stripping debug symbols and obfuscating object names, and are likely to do so; meanwhile the same information is 
 available by attaching a debugger.
 
-It has been suggested that the Standard may wish to provide an attribute for library authors to denote that a stack frame should be omitted from stack traces. We consider this out of scope for this proposal.
+It has been suggested that the Standard may wish to provide an attribute for users to denote that a stack frame should be omitted from stack traces. We consider this out of scope for this proposal.
 
 ## Rethrow
 
