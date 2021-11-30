@@ -120,7 +120,7 @@ Thank you especially to Antony Peacock for getting this paper ready for initial 
 : R0
 :: Initial revision; incorporated informal feedback.
 : R1
-:: Add `with_stacktrace` proposed syntax; add additional parameter (non-default) syntax.
+:: Add `with_stacktrace` proposed syntax; add additional parameter (non-default) syntax. Extend discussion of rethrow. Add discussion of fallback implementation, coroutines, and allocators.
 
 # Possible syntaxes
 
@@ -284,9 +284,9 @@ try {
 
 This poses two problems: firstly, the stacktrace is truncated by the rethrow, and secondly it is not available to `unhandled_exception`. We tentatively suggest that the rethrow should be defined as preserving the stacktrace (this can be achieved by only installing the exception handler at the point of initial await-resume), and that `unhandled_exception` should be passed an appropriate stacktrace object where that call is well-formed.
 
-## Allocation
+## Allocators
 
-Some syntaxes allow the user to supply an allocator; this is desirable for performance and/or latency.  In this case it would be preferable to also allow the user to supply a `max_depth` (but not `skip`) parameter as supplied to `basic_stacktrace::current()`, so that the stacktrace can if desired be constructed into a fixed-size buffer with no allocation overhead during unwinding.
+Some syntaxes permit the user to supply an allocator; this is desirable for performance and/or latency.  In this case it would be preferable to also allow the user to supply a `max_depth` (but not `skip`) parameter as supplied to `basic_stacktrace::current()`, so that the stacktrace can (if desired) be constructed into a fixed-size buffer with no allocation overhead during unwinding.
 
 On the other hand, allowing the user to supply an allocator opens the door to abuse (running arbitrary user code during unwinding).
 
