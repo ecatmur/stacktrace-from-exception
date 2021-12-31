@@ -137,6 +137,9 @@ struct AnyExceptionTypeInfo : std::type_info {
     bool __do_catch(std::type_info const* thr_type, void** thr_obj, unsigned outer) const override;
 };
 struct AnyException {
+    AnyException() = delete;
+    AnyException(AnyException const&) = delete;
+    AnyException& operator=(AnyException const&) = delete;
     virtual int dummy();
     using Handler = std::function<bool(std::type_info const* thr_type, void** thr_obj, unsigned outer)>;
     inline static thread_local Handler handler;
@@ -374,12 +377,8 @@ auto tryCatch(auto f, auto e) {
     try {
         return f();
     }
-    catch (AnyException&) {
-        try {
-            std::rethrow_exception(std::current_exception());
-        } catch (Ex& ex) {
-            return e(ex, st);
-        }
+    catch (AnyException& ae) {
+        return e(reinterpret_cast<Ex&>(ae), st);
     }
 #endif
 }
