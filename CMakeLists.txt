@@ -23,9 +23,9 @@ find_program(CURL curl)
 if (CURL)
   add_custom_target(iso_paper
     COMMAND
-      ${CURL} -k https://api.csswg.org/bikeshed/ -F file=@${CMAKE_CURRENT_SOURCE_DIR}/paper.md -F force=1 > P2490R0.html
+      ${CURL} -k https://api.csswg.org/bikeshed/ -F file=@${CMAKE_CURRENT_SOURCE_DIR}/paper.md -F force=1 > P2490R1.html
         BYPRODUCTS
-          P2490R0.html
+          P2490R1.html
         COMMENT
           "Generating ISO Paper P2490 revision 0"
   )
