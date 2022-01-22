@@ -184,6 +184,22 @@ Advantages: no new grammar, easy to add to existing code, open to adding futher 
 Disadvantages: `std::current_exception_stacktrace()` would fail (returning an empty stacktrace?) in case the current exception being handled does not have an associated
 stacktrace, or if there is no current exception being handled.  This does not appear to be a problem in practice with `std::current_exception()`.
 
+## Additional parameter
+
+(Gašper Azman / Bronek Kozicki)
+
+```c++
+try {
+    ...
+} catch (std::exception& ex, std::stacktrace st) {
+    std::cout << ex.what() << "\n" << st << std::endl;
+}
+```
+
+This shows some similarity to Python [[python]], where `sys.exc_info` yields a tuple of exception and traceback.
+
+Drawbacks: new syntax, could be understood as providing multiple types to be caught.
+
 # Concerns
 
 ## Implementability
