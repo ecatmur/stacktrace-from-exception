@@ -2126,7 +2126,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li>
        <a href="#wrapper-type"><span class="secno">2.1</span> <span class="content">Wrapper type</span></a>
        <ol class="toc">
-        <li><a href="#sketch-of-wording"><span class="secno">2.1.1</span> <span class="content">Sketch of wording</span></a>
+        <li><a href="#sketch-of-api"><span class="secno">2.1.1</span> <span class="content">Sketch of API</span></a>
        </ol>
       <li><a href="#attribute"><span class="secno">2.2</span> <span class="content">Attribute</span></a>
       <li><a href="#additional-parameter"><span class="secno">2.3</span> <span class="content">Additional parameter</span></a>
@@ -2240,13 +2240,20 @@ Using an instantiation of this template in the exception-declaration of a handle
     <li data-md>
      <p>Can template parameter <code class="highlight"><c- n>E</c-></code> be cvref qualified? - probably yes, to minimize code changes; this means that <code class="highlight"><c- n>get_exception</c-><c- p>()</c-></code> should return by reference, but the returned reference should refer to the exception object when <code class="highlight"><c- n>E</c-></code> is a reference type, and to a copy of the exception object otherwise.</p>
    </ul>
-   <h4 class="heading settled" data-level="2.1.1" id="sketch-of-wording"><span class="secno">2.1.1. </span><span class="content">Sketch of wording</span><a class="self-link" href="#sketch-of-wording"></a></h4>
-<pre class="language-c++ highlight"><c- n>template</c-><c- o>&lt;</c-><c- n>class</c-> <c- n>E</c-><c- p>,</c-> <c- n>class</c-> <c- n>Allocator</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>allocator</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>stacktrace_entry</c-><c- o>></c-><c- p>,</c-> <c- b>size_t</c-> <c- n>max_depth</c-> <c- o>=</c-> <c- mi>-1</c-><c- o>></c->
-<c- k>struct</c-> <c- nc>with_stacktrace</c-> <c- p>{</c->
-    <c- n>using</c-> <c- n>exception_type</c-> <c- o>=</c-> <c- n>conditional_t</c-><c- o>&lt;</c-><c- n>is_array_v</c-><c- o>&lt;</c-><c- n>E</c-><c- o>></c-><c- p>,</c-> <c- n>remove_extent_t</c-><c- o>&lt;</c-><c- n>E</c-><c- o>>*</c-><c- p>,</c-> <c- n>conditional_t</c-><c- o>&lt;</c-><c- n>is_function_v</c-><c- o>&lt;</c-><c- n>E</c-><c- o>></c-><c- p>,</c-> <c- n>E</c-><c- o>*</c-><c- p>,</c-> <c- n>E</c-><c- o>>></c-><c- p>;</c->
-    <c- n>using</c-> <c- n>stacktrace_type</c-> <c- o>=</c-> <c- n>basic_stacktrace</c-><c- o>&lt;</c-><c- n>Allocator</c-><c- o>></c-><c- p>;</c->
-    <c- n>exception_type</c-><c- o>&amp;</c-> <c- nf>get_exception</c-><c- p>()</c-> <c- k>const</c-> <c- n>noexcept</c-> <c- n>requires</c-> <c- p>(</c-><c- n>not</c-> <c- n>is_void_v</c-><c- o>&lt;</c-><c- n>E</c-><c- o>></c-><c- p>);</c->
-    <c- n>stacktrace_type</c-><c- o>&amp;</c-> <c- nf>get_stacktrace</c-><c- p>()</c-> <c- k>const</c-><c- p>;</c->
+   <h4 class="heading settled" data-level="2.1.1" id="sketch-of-api"><span class="secno">2.1.1. </span><span class="content">Sketch of API</span><a class="self-link" href="#sketch-of-api"></a></h4>
+   <p>For concrete proposal, see <a data-link-type="biblio" href="#biblio-branch">[branch]</a>.</p>
+<pre class="language-c++ highlight"><c- n>template</c-><c- o>&lt;</c-><c- n>class</c-> <c- n>E</c-> <c- o>=</c-> <c- b>void</c-><c- p>,</c-> <c- n>class</c-> <c- n>Allocator</c-> <c- o>=</c-> <c- n>std</c-><c- o>::</c-><c- n>allocator</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>stacktrace_entry</c-><c- o>>></c->
+<c- k>struct</c-> <c- nc>with_stacktrace</c-> <c- n>final</c-> <c- p>{</c->
+	<c- n>using</c-> <c- n>exception_type</c-> <c- o>=</c-> <c- n>E</c-><c- p>;</c->
+	<c- n>using</c-> <c- n>stacktrace_type</c-> <c- o>=</c-> <c- n>basic_stacktrace</c-><c- o>&lt;</c-><c- n>Alloc</c-><c- o>></c-><c- p>;</c->
+	<c- n>exception_type</c-><c- o>&amp;</c-> <c- nf>get_exception</c-><c- p>();</c->
+	<c- n>stacktrace_type</c-><c- o>&amp;</c-> <c- nf>get_stacktrace</c-><c- p>();</c->
+<c- p>};</c->
+
+<c- n>template</c-><c- o>&lt;</c-><c- n>class</c-> <c- n>Allocator</c-><c- o>></c->
+<c- k>struct</c-> <c- nc>with_stacktrace</c-><c- o>&lt;</c-><c- b>void</c-><c- p>,</c-> <c- n>Allocator</c-><c- o>></c-> <c- n>final</c-> <c- p>{</c->
+	<c- n>using</c-> <c- n>stacktrace_type</c-> <c- o>=</c-> <c- n>basic_stacktrace</c-><c- o>&lt;</c-><c- n>Alloc</c-><c- o>></c-><c- p>;</c->
+	<c- n>stacktrace_type</c-><c- o>&amp;</c-> <c- nf>get_stacktrace</c-><c- p>();</c->
 <c- p>};</c->
 </pre>
    <h3 class="heading settled" data-level="2.2" id="attribute"><span class="secno">2.2. </span><span class="content">Attribute</span><a class="self-link" href="#attribute"></a></h3>
