@@ -155,15 +155,23 @@ Drawbacks: greater verbosity (compared to syntaxes where `ex` and `st` are separ
 * How to `catch (...)` - perhaps `catch (std::with_stacktrace<> e)` (empty template argument list), or `std::with_stacktrace<void>`?
 * Can template parameter `E` be cvref qualified? - probably yes, to minimize code changes; this means that `get_exception()` should return by reference, but the returned reference should refer to the exception object when `E` is a reference type, and to a copy of the exception object otherwise.
 
-### Sketch of wording
+### Sketch of API
+
+For concrete proposal, see [[branch]].
 
 ```c++
-template<class E, class Allocator = std::allocator<std::stacktrace_entry>, size_t max_depth = -1>
-struct with_stacktrace {
-    using exception_type = conditional_t<is_array_v<E>, remove_extent_t<E>*, conditional_t<is_function_v<E>, E*, E>>;
-    using stacktrace_type = basic_stacktrace<Allocator>;
-    exception_type& get_exception() const noexcept requires (not is_void_v<E>);
-    stacktrace_type& get_stacktrace() const;
+template<class E = void, class Allocator = std::allocator<std::stacktrace_entry>>
+struct with_stacktrace final {
+	using exception_type = E;
+	using stacktrace_type = basic_stacktrace<Alloc>;
+	exception_type& get_exception();
+	stacktrace_type& get_stacktrace();
+};
+
+template<class Allocator>
+struct with_stacktrace<void, Allocator> final {
+	using stacktrace_type = basic_stacktrace<Alloc>;
+	stacktrace_type& get_stacktrace();
 };
 ```
 
