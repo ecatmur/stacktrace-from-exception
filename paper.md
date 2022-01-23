@@ -17,7 +17,7 @@ Editor: Ed Catmur, ed@catmur.uk
 {
     "p2370": {
         "title": "Stacktrace from exception",
-        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2370r1.html"
+        "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2370r2.html"
     },
     "jeng": {
         "title": "The Visual C++ Exception Model",
@@ -73,27 +73,33 @@ possible to retrieve a stacktrace from the (most recent) `throw` point of the ex
 *cooperation by* or *modification of* throwing code.  That paper acknowledges that the cost of taking a stacktrace on *every* exception throw would be prohibitive and proposes a
 mechanism to disable it via a standard library routine `std::this_thread::set_capture_stacktraces_at_throw` that will set a thread-local flag.
 
-We argue that this mechanism still imposes a runtime cost and would not achieve the aims of the paper for the proposed facility; we propose an alternative interface that leaves
+We argue that this mechanism still imposes an unavoidable overhead and would not achieve the aims of the paper for the proposed facility; we propose an alternative interface
+that leaves
 implementers the freedom to choose lower-cost implementation strategies, and demonstrate how those strategies can be implemented.
 
-### Runtime cost
+### Constant overhead
 
-Accessing a thread-local variable has a cost in instructions and memory access; at present this could be argued to be lost in the "noise" of the existing exception handling
+Accessing a thread-local variable (to check the flag on throwing) has a cost in instructions and memory access, even if the facility is not used; at present this could be
+argued to be lost in the "noise" of the existing exception handling
 machinery, particularly as this currently involves memory allocation, but in future if the **Zero-overhead deterministic exceptions: Throwing values** [[p0709]] proposal is 
 adopted this will become relatively more significant.
 
-### Old third-party libraries
+### Internally handled exceptions
 
-Under the proposed mechanism, throw sites would need recompilation and/or relinking to participate in the facility.  It is entirely possible that third-party library code is
-shipped with its own implementations of the exception-raising mechanism, such that it would not participate in the facility until such time as the vendor recompiles and relinks
-the library, which may not come for years or even decades.
-
-### Conflicting requirements
+When an exception is thrown and handled internally by a (possibly third-party) library, under the proposed mechanism the cost of taking a stacktrace will be incurred even if 
+the internal handler does not access it.
 
 Third-party library vendors who use exceptions for control flow may be expected to view the proposed facility negatively; if user code enables it via the proposed mechanism the
 cost will be considerable even for exceptions that are caught and handled successfully entirely within the third-party library.  Thus they are likely to disable the facility at
 API entry points, both negating the point of the facility for any exceptions that *do* leak out of the third-party library, and interfering with user code that expects it to
 remain enabled.
+
+### Old third-party libraries
+
+Under the proposed mechanism, code would need recompilation and/or relinking to participate in the facility, since the action to check the flag and take a stacktrace occurs at
+the throw site.  It is not unusual that third-party library code is
+shipped with its own implementations of the exception-raising mechanism, such that it would not participate in the facility until such time as the vendor recompiles and relinks
+the library, which may not occur for some time.
 
 ## Alternatives
 
@@ -133,7 +139,7 @@ Thank you especially to Antony Peacock for getting this paper ready for initial 
 
 # Possible syntaxes
 
-Note: for alternative syntaxes see version 0 of this paper.
+Note: some more alternative syntaxes are discussed in previous versions of this paper.
 
 ## Wrapper type
 
@@ -271,8 +277,8 @@ try {
 ```
 
 This poses two problems: firstly, the stacktrace is truncated by the rethrow, and secondly it is not available to `unhandled_exception`. We tentatively suggest that the rethrow 
-should be defined as preserving the stacktrace (this can be achieved by only installing the exception handler at the point of initial await-resume), and that 
-`unhandled_exception` should be passed an appropriate stacktrace object where that call is well-formed.
+should be defined as preserving the stacktrace (this can be achieved by delaying installation of the exception handler to the point of initial await-resume), and that 
+`unhandled_exception` should be passed an appropriate stacktrace object (as a function argument, where well-formed).
 
 ## Allocators
 
@@ -283,7 +289,7 @@ On the other hand, allowing the user to supply an allocator opens the door to ab
 
 # Implementation experience
 
-The following implementations are provided to demonstrate implementability.
+The following proofs of concept and implementations are provided to demonstrate implementability.
 
 ## Windows (SEH)
 
