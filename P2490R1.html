@@ -2082,7 +2082,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">P2490R1<br>Zero-overhead exception stacktraces</h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2022-01-22">2022-01-22</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2022-01-23">2022-01-23</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt>This version:
@@ -2112,9 +2112,9 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li>
        <a href="#background"><span class="secno">1.2</span> <span class="content">Background</span></a>
        <ol class="toc">
-        <li><a href="#runtime-cost"><span class="secno">1.2.1</span> <span class="content">Runtime cost</span></a>
-        <li><a href="#old-third-party-libraries"><span class="secno">1.2.2</span> <span class="content">Old third-party libraries</span></a>
-        <li><a href="#conflicting-requirements"><span class="secno">1.2.3</span> <span class="content">Conflicting requirements</span></a>
+        <li><a href="#constant-overhead"><span class="secno">1.2.1</span> <span class="content">Constant overhead</span></a>
+        <li><a href="#internally-handled-exceptions"><span class="secno">1.2.2</span> <span class="content">Internally handled exceptions</span></a>
+        <li><a href="#old-third-party-libraries"><span class="secno">1.2.3</span> <span class="content">Old third-party libraries</span></a>
        </ol>
       <li><a href="#alternatives"><span class="secno">1.3</span> <span class="content">Alternatives</span></a>
       <li><a href="#acknowledgements"><span class="secno">1.4</span> <span class="content">Acknowledgements</span></a>
@@ -2163,21 +2163,26 @@ techniques that could underly such alternatives.</p>
 should be
 possible to retrieve a stacktrace from the (most recent) <code class="highlight"><c- k>throw</c-></code> point of the exception, through the point of handling; and that this should be <em>transparent</em> to and not require <em>cooperation by</em> or <em>modification of</em> throwing code.  That paper acknowledges that the cost of taking a stacktrace on <em>every</em> exception throw would be prohibitive and proposes a
 mechanism to disable it via a standard library routine <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>set_capture_stacktraces_at_throw</c-></code> that will set a thread-local flag.</p>
-   <p>We argue that this mechanism still imposes a runtime cost and would not achieve the aims of the paper for the proposed facility; we propose an alternative interface that leaves
+   <p>We argue that this mechanism still imposes an unavoidable overhead and would not achieve the aims of the paper for the proposed facility; we propose an alternative interface
+that leaves
 implementers the freedom to choose lower-cost implementation strategies, and demonstrate how those strategies can be implemented.</p>
-   <h4 class="heading settled" data-level="1.2.1" id="runtime-cost"><span class="secno">1.2.1. </span><span class="content">Runtime cost</span><a class="self-link" href="#runtime-cost"></a></h4>
-   <p>Accessing a thread-local variable has a cost in instructions and memory access; at present this could be argued to be lost in the "noise" of the existing exception handling
+   <h4 class="heading settled" data-level="1.2.1" id="constant-overhead"><span class="secno">1.2.1. </span><span class="content">Constant overhead</span><a class="self-link" href="#constant-overhead"></a></h4>
+   <p>Accessing a thread-local variable (to check the flag on throwing) has a cost in instructions and memory access, even if the facility is not used; at present this could be
+argued to be lost in the "noise" of the existing exception handling
 machinery, particularly as this currently involves memory allocation, but in future if the <strong>Zero-overhead deterministic exceptions: Throwing values</strong> <a data-link-type="biblio" href="#biblio-p0709">[p0709]</a> proposal is 
 adopted this will become relatively more significant.</p>
-   <h4 class="heading settled" data-level="1.2.2" id="old-third-party-libraries"><span class="secno">1.2.2. </span><span class="content">Old third-party libraries</span><a class="self-link" href="#old-third-party-libraries"></a></h4>
-   <p>Under the proposed mechanism, throw sites would need recompilation and/or relinking to participate in the facility.  It is entirely possible that third-party library code is
-shipped with its own implementations of the exception-raising mechanism, such that it would not participate in the facility until such time as the vendor recompiles and relinks
-the library, which may not come for years or even decades.</p>
-   <h4 class="heading settled" data-level="1.2.3" id="conflicting-requirements"><span class="secno">1.2.3. </span><span class="content">Conflicting requirements</span><a class="self-link" href="#conflicting-requirements"></a></h4>
+   <h4 class="heading settled" data-level="1.2.2" id="internally-handled-exceptions"><span class="secno">1.2.2. </span><span class="content">Internally handled exceptions</span><a class="self-link" href="#internally-handled-exceptions"></a></h4>
+   <p>When an exception is thrown and handled internally by a (possibly third-party) library, under the proposed mechanism the cost of taking a stacktrace will be incurred even if
+the internal handler does not access it.</p>
    <p>Third-party library vendors who use exceptions for control flow may be expected to view the proposed facility negatively; if user code enables it via the proposed mechanism the
 cost will be considerable even for exceptions that are caught and handled successfully entirely within the third-party library.  Thus they are likely to disable the facility at
 API entry points, both negating the point of the facility for any exceptions that <em>do</em> leak out of the third-party library, and interfering with user code that expects it to
 remain enabled.</p>
+   <h4 class="heading settled" data-level="1.2.3" id="old-third-party-libraries"><span class="secno">1.2.3. </span><span class="content">Old third-party libraries</span><a class="self-link" href="#old-third-party-libraries"></a></h4>
+   <p>Under the proposed mechanism, code would need recompilation and/or relinking to participate in the facility, since the action to check the flag and take a stacktrace occurs at
+the throw site.  It is not unusual that third-party library code is
+shipped with its own implementations of the exception-raising mechanism, such that it would not participate in the facility until such time as the vendor recompiles and relinks
+the library, which may not occur for some time.</p>
    <h3 class="heading settled" data-level="1.3" id="alternatives"><span class="secno">1.3. </span><span class="content">Alternatives</span><a class="self-link" href="#alternatives"></a></h3>
    <p>We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.  On Windows this is structured exception handling <a data-link-type="biblio" href="#biblio-seh">[seh]</a>,
 while on the Itanium ABI (used by most Unix-style OSes on x64-64) it is the Level I Base ABI <a data-link-type="biblio" href="#biblio-itanium">[itanium]</a>.  This lower-level facility uses <em>two-phase</em> exception handling; in 
@@ -2222,7 +2227,7 @@ throw point to the selected handler, this time invoking cleanup (i.e., destructo
      <p>Add <code class="highlight"><c- n>with_stacktrace</c-></code> proposed syntax; add attribute syntax. Extend discussion of rethrow. Add discussion of fallback implementation, coroutines, and allocators.</p>
    </dl>
    <h2 class="heading settled" data-level="2" id="possible-syntaxes"><span class="secno">2. </span><span class="content">Possible syntaxes</span><a class="self-link" href="#possible-syntaxes"></a></h2>
-   <p class="note" role="note"><span>Note:</span> for alternative syntaxes see version 0 of this paper.</p>
+   <p class="note" role="note"><span>Note:</span> some more alternative syntaxes are discussed in previous versions of this paper.</p>
    <h3 class="heading settled" data-level="2.1" id="wrapper-type"><span class="secno">2.1. </span><span class="content">Wrapper type</span><a class="self-link" href="#wrapper-type"></a></h3>
    <p>We suggest a syntax (suggested by Jonathan Wakely) that adds a special Library class template, <code class="highlight"><c- n>with_stacktrace</c-></code>.
 Using an instantiation of this template in the exception-declaration of a handler requests exception stacktrace for any exception handled by that catch block.</p>
@@ -2321,13 +2326,13 @@ extension, we are not pursuing it in this paper but leave it open for future dir
 <c- p>}</c->
 </pre>
    <p>This poses two problems: firstly, the stacktrace is truncated by the rethrow, and secondly it is not available to <code class="highlight"><c- n>unhandled_exception</c-></code>. We tentatively suggest that the rethrow
-should be defined as preserving the stacktrace (this can be achieved by only installing the exception handler at the point of initial await-resume), and that <code class="highlight"><c- n>unhandled_exception</c-></code> should be passed an appropriate stacktrace object where that call is well-formed.</p>
+should be defined as preserving the stacktrace (this can be achieved by delaying installation of the exception handler to the point of initial await-resume), and that <code class="highlight"><c- n>unhandled_exception</c-></code> should be passed an appropriate stacktrace object (as a function argument, where well-formed).</p>
    <h3 class="heading settled" data-level="3.5" id="allocators"><span class="secno">3.5. </span><span class="content">Allocators</span><a class="self-link" href="#allocators"></a></h3>
    <p>Some syntaxes permit the user to supply an allocator; this is desirable for performance and/or latency.  To permit the user to avoid allocation overhead by providing a
 fixed-size buffer, we suggest that the implementation should be encouraged to use <code class="highlight"><c- n>allocator_traits</c-><c- o>::</c-><c- n>max_size</c-></code> and/or <code class="highlight"><c- n>allocate_at_least</c-></code>.</p>
    <p>On the other hand, allowing the user to supply an allocator opens the door to abuse (running arbitrary user code during unwinding).</p>
    <h2 class="heading settled" data-level="4" id="implementation-experience"><span class="secno">4. </span><span class="content">Implementation experience</span><a class="self-link" href="#implementation-experience"></a></h2>
-   <p>The following implementations are provided to demonstrate implementability.</p>
+   <p>The following proofs of concept and implementations are provided to demonstrate implementability.</p>
    <h3 class="heading settled" data-level="4.1" id="windows-seh"><span class="secno">4.1. </span><span class="content">Windows (SEH)</span><a class="self-link" href="#windows-seh"></a></h3>
    <p>It is well known that the vendor-specific <code class="highlight"><c- kr>__try</c-></code> and <code class="highlight"><c- kr>__except</c-></code> keywords <a data-link-type="biblio" href="#biblio-try-except">[try-except]</a> (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked
 during search phase, since the <em>filter-expression</em> argument to the <code class="highlight"><c- kr>__except</c-></code> keyword is a funclet evaluated during search phase, to an enumeration indicating whether the 
@@ -2482,7 +2487,7 @@ suggested <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>with_stacktra
    <dt id="biblio-p0709">[P0709]
    <dd><a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0709r4.pdf"><cite>Zero-overhead deterministic exceptions: Throwing values</cite></a>. URL: <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0709r4.pdf">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0709r4.pdf</a>
    <dt id="biblio-p2370">[P2370]
-   <dd><a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2370r1.html"><cite>Stacktrace from exception</cite></a>. URL: <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2370r1.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2370r1.html</a>
+   <dd><a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2370r2.html"><cite>Stacktrace from exception</cite></a>. URL: <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2370r2.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2370r2.html</a>
    <dt id="biblio-poc">[POC]
    <dd><a href="https://github.com/ecatmur/stacktrace-from-exception/blob/main/stacktrace-from-exception.cpp"><cite>Proof-of-concept implementation.</cite></a>. URL: <a href="https://github.com/ecatmur/stacktrace-from-exception/blob/main/stacktrace-from-exception.cpp">https://github.com/ecatmur/stacktrace-from-exception/blob/main/stacktrace-from-exception.cpp</a>
    <dt id="biblio-python">[PYTHON]
