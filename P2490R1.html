@@ -2082,7 +2082,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">P2490R1<br>Zero-overhead exception stacktraces</h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2022-01-23">2022-01-23</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2022-01-26">2022-01-26</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt>This version:
@@ -2331,6 +2331,8 @@ should be defined as preserving the stacktrace (this can be achieved by delaying
    <p>Some syntaxes permit the user to supply an allocator; this is desirable for performance and/or latency.  To permit the user to avoid allocation overhead by providing a
 fixed-size buffer, we suggest that the implementation should be encouraged to use <code class="highlight"><c- n>allocator_traits</c-><c- o>::</c-><c- n>max_size</c-></code> and/or <code class="highlight"><c- n>allocate_at_least</c-></code>.</p>
    <p>On the other hand, allowing the user to supply an allocator opens the door to abuse (running arbitrary user code during unwinding).</p>
+   <p>Even where the user supplies an allocator, it may not necessarily be invoked at the same time as the stacktrace is captured; an implementation could
+capture into a separate buffer and allocate the stacktrace exposed to the user at a later time.</p>
    <h2 class="heading settled" data-level="4" id="implementation-experience"><span class="secno">4. </span><span class="content">Implementation experience</span><a class="self-link" href="#implementation-experience"></a></h2>
    <p>The following proofs of concept and implementations are provided to demonstrate implementability.</p>
    <h3 class="heading settled" data-level="4.1" id="windows-seh"><span class="secno">4.1. </span><span class="content">Windows (SEH)</span><a class="self-link" href="#windows-seh"></a></h3>
