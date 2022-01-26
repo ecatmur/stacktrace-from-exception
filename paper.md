@@ -287,6 +287,9 @@ fixed-size buffer, we suggest that the implementation should be encouraged to us
 
 On the other hand, allowing the user to supply an allocator opens the door to abuse (running arbitrary user code during unwinding).
 
+Even where the user supplies an allocator, it may not necessarily be invoked at the same time as the stacktrace is captured; an implementation could
+capture into a separate buffer and allocate the stacktrace exposed to the user at a later time.
+
 # Implementation experience
 
 The following proofs of concept and implementations are provided to demonstrate implementability.
