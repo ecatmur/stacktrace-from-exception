@@ -2,7 +2,7 @@
 Title:  Zero-overhead exception stacktraces
 Shortname: P2490
 URL: https://wg21.link/P2490
-Revision: 1
+Revision: 2
 Audience: LEWG
 Status: P
 Group: WG21
