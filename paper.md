@@ -169,7 +169,7 @@ The syntax makes it easy for users to add to existing code; since unrecognized a
 For future direction, this syntax would allow passing in parameters, for example limiting stack depth via a `max_depth` argument to the attribute.
 It would also make it conceivable to add further diagnostic information in future (e.g. minidump), in an orthogonal manner.
 
-A possible disadvantage is that `std::current_exception_stacktrace()` would fail (returning an empty stacktrace?) in case the current exception being handled does not have an associated stacktrace, or if there is no current exception being handled.
+A possible disadvantage is that `std::stacktrace::from_current_exception()` would fail (returning an empty stacktrace?) in case the current exception being handled does not have an associated stacktrace, or if there is no current exception being handled.
 This does not appear to be a problem in practice with `std::current_exception()`, and can be seen as an advantage if users wish to enable or disable the attribute via the preprocessor conditional on build type.
 
 An implementation of this syntax is presented in [[branch-attribute]].
