@@ -25,10 +25,10 @@ find_program(CURL curl)
 if (CURL)
   add_custom_target(iso_paper
     COMMAND
-      ${CURL} -k https://api.csswg.org/bikeshed/ -F file=@${CMAKE_CURRENT_SOURCE_DIR}/paper.md -F force=1 > {_paper}R{_revision}.html
+      ${CURL} -k https://api.csswg.org/bikeshed/ -F file=@${CMAKE_CURRENT_SOURCE_DIR}/paper.md -F force=1 > ${_paper}R${_revision}.html
         BYPRODUCTS
-          {_paper}R{_revision}.html
+          ${_paper}R${_revision}.html
         COMMENT
-          "Generating ISO Paper {_paper} revision {_revision}"
+          "Generating ISO Paper ${_paper} revision ${_revision}"
   )
 endif ()
