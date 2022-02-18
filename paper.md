@@ -161,9 +161,9 @@ try {
 
 This would require one minor grammar change, adding an optional *attribute-specifier-seq* to precede the `...` production of *exception-declaration*.
 
-The `[[with_stacktrace]]` attribute would be permitted to appear on an *exception-declaration* only (though see [[#Coroutines]]).
+The `[[with_stacktrace]]` attribute would be permitted to appear on an *exception-declaration* only (though see [[#coroutines]]).
 
-Semantically, an exception being handled has an *associated stacktrace*, which the implementation is encouraged to ensure extends at least from its most recent `throw` point (possibly a rethrow, see [[#Rethrow]]) to the point where it is caught, only if the *exception-declaration* where it is caught (which may be `...`) has the attribute `[[with_stacktrace]]`; otherwise, the exception does not have an associated stacktrace.
+Semantically, an exception being handled has an *associated stacktrace*, which the implementation is encouraged to ensure extends at least from its most recent `throw` point (possibly a rethrow, see [[#rethrow]]) to the point where it is caught, only if the *exception-declaration* where it is caught (which may be `...`) has the attribute `[[with_stacktrace]]`; otherwise, the exception does not have an associated stacktrace.
 The static member function `std::stacktrace::from_current_exception()` (see [[p2370]]) returns (as `std::stacktrace`) the associated stacktrace of the currently handled exception if one exists, otherwise the return value is unspecified (or possibly empty, or possibly `std::stacktrace::current()`).
 
 Note that the interface for *accessing* the stored stacktrace is the same as in [[p2370]]; it is only the interface for *requesting* that it be stored that is different.
