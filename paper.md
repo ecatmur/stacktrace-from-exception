@@ -149,7 +149,7 @@ Note: some more alternative syntaxes are discussed in previous versions of this 
 
 ## Attribute
 
-We suggest a syntax using an attribute `[[with_stacktrace]]` to adorn the *exception-declaration* of the *handler* requesting exception stacktrace:
+We suggest a syntax using an attribute `[[with_stacktrace]]` to the *exception-declaration* of the *handler* requesting exception stacktrace:
 
 ```c++
 try {
@@ -159,17 +159,22 @@ try {
 }
 ```
 
-This would require one very small grammar change to add an optional *attribute-specifier-seq* to the `...` production of *exception-declaration*.
+This would require one minor grammar change, adding an optional *attribute-specifier-seq* to precede the `...` production of *exception-declaration*.
+
+The `[[with_stacktrace]]` attribute would be permitted to appear on an *exception-declaration* only (though see [[#Coroutines]]).
+
+Semantically, an exception being handled has an *associated stacktrace*, which the implementation is encouraged to ensure extends at least from its most recent `throw` point (possibly a rethrow, see [[#Rethrow]]) to the point where it is caught, only if the *exception-declaration* where it is caught (which may be `...`) has the attribute `[[with_stacktrace]]`; otherwise, the exception does not have an associated stacktrace.
+The static member function `std::stacktrace::from_current_exception()` (see [[p2370]]) returns (as `std::stacktrace`) the associated stacktrace of the currently handled exception if one exists, otherwise the return value is unspecified (or possibly empty, or possibly `std::stacktrace::current()`).
 
 Note that the interface for *accessing* the stored stacktrace is the same as in [[p2370]]; it is only the interface for *requesting* that it be stored that is different.
 
 The attribute syntax is in keeping with the nature of this facility as a request to the implementation that can be ignored if unsupported.
 The syntax makes it easy for users to add to existing code; since unrecognized attributes are ignored it can be unconditionally added and the exception stacktrace retrieved conditional on a feature-test macro, with surrounding code unchanged.
 
-For future direction, this syntax would allow passing in parameters, for example limiting stack depth via a `max_depth` argument to the attribute.
-It would also make it conceivable to add further diagnostic information in future (e.g. minidump), in an orthogonal manner.
+For future direction, this syntax would allow passing parameters via attribute arguments, for example limiting stack depth via a `max_depth` argument to the attribute.
+It would also make it conceivable to add further diagnostic information in future (e.g. minidump), in an orthogonal manner by adding more attributes.
 
-A possible disadvantage is that `std::stacktrace::from_current_exception()` would fail (returning an empty stacktrace?) in case the current exception being handled does not have an associated stacktrace, or if there is no current exception being handled.
+A possible disadvantage is that `std::stacktrace::from_current_exception()` would fail at runtime (possibly in an unspecified manner) in case the current exception being handled does not have an associated stacktrace, or if there is no current exception being handled.
 This does not appear to be a problem in practice with `std::current_exception()`, and can be seen as an advantage if users wish to enable or disable the attribute via the preprocessor conditional on build type.
 
 An implementation of this syntax is presented in [[branch-attribute]].
