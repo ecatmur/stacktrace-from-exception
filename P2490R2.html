@@ -2082,7 +2082,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"></p>
    <h1 class="p-name no-ref" id="title">P2490R2<br>Zero-overhead exception stacktraces</h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2022-02-13">2022-02-13</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2022-02-17">2022-02-17</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt>This version:
@@ -2228,20 +2228,23 @@ throw point to the selected handler, this time invoking cleanup (i.e., destructo
    <h2 class="heading settled" data-level="2" id="possible-syntaxes"><span class="secno">2. </span><span class="content">Possible syntaxes</span><a class="self-link" href="#possible-syntaxes"></a></h2>
    <p class="note" role="note"><span>Note:</span> some more alternative syntaxes are discussed in previous versions of this paper.</p>
    <h3 class="heading settled" data-level="2.1" id="attribute"><span class="secno">2.1. </span><span class="content">Attribute</span><a class="self-link" href="#attribute"></a></h3>
-   <p>We suggest a syntax using an attribute <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code> to adorn the <em>exception-declaration</em> of the <em>handler</em> requesting exception stacktrace:</p>
+   <p>We suggest a syntax using an attribute <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code> to the <em>exception-declaration</em> of the <em>handler</em> requesting exception stacktrace:</p>
 <pre class="language-c++ highlight"><c- n>try</c-> <c- p>{</c->
     <c- p>...</c->
 <c- p>}</c-> <c- n>catch</c-> <c- p>([[</c-><c- n>with_stacktrace</c-><c- p>]]</c-> <c- n>std</c-><c- o>::</c-><c- n>exception</c-><c- o>&amp;</c-> <c- n>e</c-><c- p>)</c-> <c- p>{</c->
     <c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- n>e</c-><c- p>.</c-><c- n>what</c-><c- p>()</c-> <c- o>&lt;&lt;</c-> <c- s>"</c-><c- se>\n</c-><c- s>"</c-> <c- o>&lt;&lt;</c-> <c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>()</c-> <c- o>&lt;&lt;</c-> <c- n>std</c-><c- o>::</c-><c- n>endl</c-><c- p>;</c->
 <c- p>}</c->
 </pre>
-   <p>This would require one very small grammar change to add an optional <em>attribute-specifier-seq</em> to the <code class="highlight"><c- p>...</c-></code> production of <em>exception-declaration</em>.</p>
+   <p>This would require one minor grammar change, adding an optional <em>attribute-specifier-seq</em> to precede the <code class="highlight"><c- p>...</c-></code> production of <em>exception-declaration</em>.</p>
+   <p>The <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code> attribute would be permitted to appear on an <em>exception-declaration</em> only (though see <a href="#Coroutines"></a>).</p>
+   <p>Semantically, an exception being handled has an <em>associated stacktrace</em>, which the implementation is encouraged to ensure extends at least from its most recent <code class="highlight"><c- k>throw</c-></code> point (possibly a rethrow, see <a href="#Rethrow"></a>) to the point where it is caught, only if the <em>exception-declaration</em> where it is caught (which may be <code class="highlight"><c- p>...</c-></code>) has the attribute <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code>; otherwise, the exception does not have an associated stacktrace.
+The static member function <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>()</c-></code> (see <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a>) returns (as <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-></code>) the associated stacktrace of the currently handled exception if one exists, otherwise the return value is unspecified (or possibly empty, or possibly <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>current</c-><c- p>()</c-></code>).</p>
    <p>Note that the interface for <em>accessing</em> the stored stacktrace is the same as in <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a>; it is only the interface for <em>requesting</em> that it be stored that is different.</p>
    <p>The attribute syntax is in keeping with the nature of this facility as a request to the implementation that can be ignored if unsupported.
 The syntax makes it easy for users to add to existing code; since unrecognized attributes are ignored it can be unconditionally added and the exception stacktrace retrieved conditional on a feature-test macro, with surrounding code unchanged.</p>
-   <p>For future direction, this syntax would allow passing in parameters, for example limiting stack depth via a <code class="highlight"><c- n>max_depth</c-></code> argument to the attribute.
-It would also make it conceivable to add further diagnostic information in future (e.g. minidump), in an orthogonal manner.</p>
-   <p>A possible disadvantage is that <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>()</c-></code> would fail (returning an empty stacktrace?) in case the current exception being handled does not have an associated stacktrace, or if there is no current exception being handled.
+   <p>For future direction, this syntax would allow passing parameters via attribute arguments, for example limiting stack depth via a <code class="highlight"><c- n>max_depth</c-></code> argument to the attribute.
+It would also make it conceivable to add further diagnostic information in future (e.g. minidump), in an orthogonal manner by adding more attributes.</p>
+   <p>A possible disadvantage is that <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>()</c-></code> would fail at runtime (possibly in an unspecified manner) in case the current exception being handled does not have an associated stacktrace, or if there is no current exception being handled.
 This does not appear to be a problem in practice with <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>current_exception</c-><c- p>()</c-></code>, and can be seen as an advantage if users wish to enable or disable the attribute via the preprocessor conditional on build type.</p>
    <p>An implementation of this syntax is presented in <a data-link-type="biblio" href="#biblio-branch-attribute">[branch-attribute]</a>.</p>
    <h3 class="heading settled" data-level="2.2" id="wrapper-type"><span class="secno">2.2. </span><span class="content">Wrapper type</span><a class="self-link" href="#wrapper-type"></a></h3>
