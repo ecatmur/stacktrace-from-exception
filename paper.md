@@ -2,7 +2,7 @@
 Title:  Zero-overhead exception stacktraces
 Shortname: P2490
 URL: https://wg21.link/P2490
-Revision: 1
+Revision: 2
 Audience: LEWG
 Status: P
 Group: WG21
@@ -50,6 +50,10 @@ Editor: Ed Catmur, ed@catmur.uk
     "branch": {
         "title": "Branch of GCC implementing proposed syntax",
         "href": "https://github.com/ecatmur/gcc/tree/with-stacktrace"
+    },
+    "branch-attribute": {
+        "title": "Branch of GCC implementing proposed attribute syntax",
+        "href": "https://github.com/ecatmur/gcc/tree/with-stacktrace-attribute"
     },
     "python": {
         "title": "sys — System-specific parameters and functions",
@@ -136,14 +140,48 @@ Thank you especially to Antony Peacock for getting this paper ready for initial 
 :: Initial revision; incorporated informal feedback.
 : R1
 :: Add `with_stacktrace` proposed syntax; add attribute syntax. Extend discussion of rethrow. Add discussion of fallback implementation, coroutines, and allocators.
+: R2
+:: Promote attribute syntax.
 
 # Possible syntaxes
 
 Note: some more alternative syntaxes are discussed in previous versions of this paper.
 
+## Attribute
+
+We suggest a syntax using an attribute `[[with_stacktrace]]` to the *exception-declaration* of the *handler* requesting exception stacktrace:
+
+```c++
+try {
+    ...
+} catch ([[with_stacktrace]] std::exception& e) {
+    std::cout << e.what() << "\n" << std::stacktrace::from_current_exception() << std::endl;
+}
+```
+
+This would require one minor grammar change, adding an optional *attribute-specifier-seq* to precede the `...` production of *exception-declaration*.
+
+The `[[with_stacktrace]]` attribute would be permitted to appear on an *exception-declaration* only (though see [[#coroutines]]).
+
+Semantically, an exception being handled has an *associated stacktrace*, which the implementation is encouraged to ensure extends at least from its most recent `throw` point (possibly a rethrow, see [[#rethrow]]) to the point where it is caught, only if the *exception-declaration* where it is caught (which may be `...`) has the attribute `[[with_stacktrace]]`; otherwise, the exception does not have an associated stacktrace.
+The static member function `std::stacktrace::from_current_exception()` (see [[p2370]]) returns (as `std::stacktrace`) the associated stacktrace of the currently handled exception if one exists, otherwise the return value is unspecified (or possibly empty, or possibly `std::stacktrace::current()`).
+
+Note that the interface for *accessing* the stored stacktrace is the same as in [[p2370]]; it is only the interface for *requesting* that it be stored that is different.
+
+The attribute syntax is in keeping with the nature of this facility as a request to the implementation that can be ignored if unsupported.
+The syntax makes it easy for users to add to existing code; since unrecognized attributes are ignored it can be unconditionally added and the exception stacktrace retrieved conditional on a feature-test macro, with surrounding code unchanged.
+
+For future direction, this syntax would allow passing parameters via attribute arguments, for example limiting stack depth via a `max_depth` argument to the attribute.
+It would also make it conceivable to add further diagnostic information in future (e.g. minidump), in an orthogonal manner by adding more attributes.
+
+A possible disadvantage is that `std::stacktrace::from_current_exception()` would fail at runtime (possibly in an unspecified manner) in case the current exception being handled does not have an associated stacktrace, or if there is no current exception being handled.
+This does not appear to be a problem in practice with `std::current_exception()`, and can be seen as an advantage if users wish to enable or disable the attribute via the preprocessor conditional on build type.
+
+An implementation of this syntax is presented in [[branch-attribute]].
+
 ## Wrapper type
 
-We suggest a syntax (suggested by Jonathan Wakely) that adds a special Library class template, `with_stacktrace`.
+Another possible syntax (suggested by Jonathan Wakely) that adds a special Library class template, `with_stacktrace`.
 Using an instantiation of this template in the exception-declaration of a handler requests exception stacktrace for any exception handled by that catch block.
 
 ```c++
@@ -156,47 +194,10 @@ try {
 
 This would require special-case handling by the unwind mechanism to match the wrapped exception type, but no changes to C++ grammar.
 
-Drawbacks: greater verbosity (compared to syntaxes where `ex` and `st` are separate variables), more complicated to change existing source code.
+Drawbacks of this approach are greater verbosity, and making it more complicated to change existing source code.
+Further, this could easily be misunderstood as performing an implicit conversion from the thrown exception to a concrete `with_stacktrace` type.
 
-* How to `catch (...)` - perhaps `catch (std::with_stacktrace<> e)` (empty template argument list), or `std::with_stacktrace<void>`?
-* Can template parameter `E` be cvref qualified? - probably yes, to minimize code changes; this means that `get_exception()` should return by reference, but the returned reference should refer to the exception object when `E` is a reference type, and to a copy of the exception object otherwise.
-
-### Sketch of API
-
-For concrete proposal, see [[branch]].
-
-```c++
-template<class E = void, class Allocator = std::allocator<std::stacktrace_entry>>
-struct with_stacktrace final {
-	using exception_type = E;
-	using stacktrace_type = basic_stacktrace<Alloc>;
-	exception_type& get_exception();
-	stacktrace_type& get_stacktrace();
-};
-
-template<class Allocator>
-struct with_stacktrace<void, Allocator> final {
-	using stacktrace_type = basic_stacktrace<Alloc>;
-	stacktrace_type& get_stacktrace();
-};
-```
-
-## Attribute
-
-Another possible syntax would be to mark the exception-declaration with an attribute, and retrieve the stacktrace later:
-
-```c++
-try {
-    ...
-} catch ([[with_stacktrace]] std::exception& e) {
-    std::cout << e.what() << "\n" << std::current_exception_stacktrace() << std::endl;
-}
-```
-
-Advantages: no new grammar, easy to add to existing code, open to adding futher diagnostic information in future (e.g. minidump).
-
-Disadvantages: `std::current_exception_stacktrace()` would fail (returning an empty stacktrace?) in case the current exception being handled does not have an associated
-stacktrace, or if there is no current exception being handled.  This does not appear to be a problem in practice with `std::current_exception()`.
+An implementation of this syntax is presented in [[branch]].
 
 ## Additional parameter
 
@@ -212,7 +213,7 @@ try {
 
 This shows some similarity to Python [[python]], where `sys.exc_info` yields a tuple of exception and traceback.
 
-Drawbacks: new syntax, could be understood as providing multiple types to be caught.
+Drawbacks: new syntax, could be misunderstood as providing multiple types to be caught.
 
 # Concerns
 
@@ -263,32 +264,18 @@ extension, we are not pursuing it in this paper but leave it open for future dir
 
 ## Coroutines
 
-The body of a coroutine is defined as-if containing a catch-all block:
+In several places in the coroutines machinery exceptions are specified as being caught and rethrown, e.g. if the initial suspend throws (before initial *await-resume*), the exception is caught and rethrown to the coroutine caller; from this point onwards, exceptions are caught as if by `...` and `unhandled_exception` is called on the promise.
+This will result in stacktraces retrieved in the caller being truncated to the rethrow point, and not being available at all to `unhandled_exception`.
 
-```c++
-try {
-    co_await promise.initial_suspend();
-    function-body
-} catch (...) {
-    if (!initial-await-resume-called)
-        throw;
-    promise.unhandled_exception();
-}
-```
-
-This poses two problems: firstly, the stacktrace is truncated by the rethrow, and secondly it is not available to `unhandled_exception`. We tentatively suggest that the rethrow 
-should be defined as preserving the stacktrace (this can be achieved by delaying installation of the exception handler to the point of initial await-resume), and that 
-`unhandled_exception` should be passed an appropriate stacktrace object (as a function argument, where well-formed).
+It might be possible would be to extend the `[[with_stacktrace]]` attribute to `unhandled_exception`; truncation could be handled by making greater use of automatic object cleanups (which do not interrupt a stacktrace).
 
 ## Allocators
 
-Some syntaxes permit the user to supply an allocator; this is desirable for performance and/or latency.  To permit the user to avoid allocation overhead by providing a 
-fixed-size buffer, we suggest that the implementation should be encouraged to use `allocator_traits::max_size` and/or `allocate_at_least`.
-
+Previously, we suggested that some syntaxes could permit the user to supply an allocator; this might be desirable for performance and/or latency.
 On the other hand, allowing the user to supply an allocator opens the door to abuse (running arbitrary user code during unwinding).
+Even where the user supplies an allocator, it may not necessarily be invoked at the same time as the stacktrace is captured; an implementation could capture into a separate buffer and allocate the stacktrace exposed to the user at a later time.
 
-Even where the user supplies an allocator, it may not necessarily be invoked at the same time as the stacktrace is captured; an implementation could
-capture into a separate buffer and allocate the stacktrace exposed to the user at a later time.
+Resource usage concerns could be addressed by accepting a `max_depth` argument, as discussed above.
 
 # Implementation experience
 
@@ -306,5 +293,5 @@ consequent code block is to be selected as the handler.  We present a proof-of-c
 Although exception handling on Itanium is also two-phase, the handler selection mechanism is largely hidden from the user.  However, there is a workaround involving creating a
 type whose run-time type information (that is, its `typeid`) refers to an instance of a user-defined subclass of `std::type_info`.  This technique is not particularly widely 
 known, but has been used 
-in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation [[poc]] and a branch [[branch]] of gcc implementing the 
-suggested `std::with_stacktrace<Ex>` syntax.
+in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation [[poc]] and branches of gcc implementing the 
+suggested `[[with_stacktrace]]` [[branch-attribute]] and `std::with_stacktrace<Ex>`  [[branch]] syntaxes.

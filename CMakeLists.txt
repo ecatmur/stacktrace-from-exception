@@ -19,14 +19,16 @@ elseif(UNIX)
   endif()
 endif()
 
+set(_paper P2490)
+set(_revision 2)
 find_program(CURL curl)
 if (CURL)
   add_custom_target(iso_paper
     COMMAND
-      ${CURL} -k https://api.csswg.org/bikeshed/ -F file=@${CMAKE_CURRENT_SOURCE_DIR}/paper.md -F force=1 > P2490R1.html
+      ${CURL} -k https://api.csswg.org/bikeshed/ -F file=@${CMAKE_CURRENT_SOURCE_DIR}/paper.md -F force=1 > ${_paper}R${_revision}.html
         BYPRODUCTS
-          P2490R1.html
+          ${_paper}R${_revision}.html
         COMMENT
-          "Generating ISO Paper P2490 revision 0"
+          "Generating ISO Paper ${_paper} revision ${_revision}"
   )
 endif ()
