@@ -138,7 +138,7 @@ Thank you especially to Antony Peacock for getting this paper ready for initial 
 
 : R0
 :: Initial revision; incorporated informal feedback.
-: R1
+: R1 (unpublished)
 :: Add `with_stacktrace` proposed syntax; add attribute syntax. Extend discussion of rethrow. Add discussion of fallback implementation, coroutines, and allocators.
 : R2
 :: Promote attribute syntax.
