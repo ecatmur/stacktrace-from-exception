@@ -228,7 +228,7 @@ This will result in stacktraces retrieved in the caller being truncated to the r
 
 The issue of truncation could be addressed by special wording; implementations may be able to use automatic object cleanups (which do not interrupt a stacktrace).
 
-`unhandled_exception` could be fixed by allowing the `[[with_stacktrace]` attribute to appertain to member function declarations as well as *exception-declarations*, such that it could be applied to a promise type's `unhandled_exception` member function, thereby directing the implementation to make exception stacktrace available to that handler.
+By allowing the `[[with_stacktrace]` attribute to appertain to member function declarations as well as *exception-declarations*, it could be applied to a promise type's `unhandled_exception` member function, thereby directing the implementation to make exception stacktrace available to that handler.
 
 ## Allocators
 
