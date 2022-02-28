@@ -2110,7 +2110,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <ol class="toc">
       <li><a href="#abstract"><span class="secno">1.1</span> <span class="content">Abstract</span></a>
       <li>
-       <a href="#background"><span class="secno">1.2</span> <span class="content">Background</span></a>
+       <a href="#motivation"><span class="secno">1.2</span> <span class="content">Motivation</span></a>
        <ol class="toc">
         <li><a href="#internally-handled-exceptions"><span class="secno">1.2.1</span> <span class="content">Internally handled exceptions</span></a>
         <li><a href="#binary-distributed-libraries"><span class="secno">1.2.2</span> <span class="content">Binary distributed libraries</span></a>
@@ -2147,7 +2147,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    <h3 class="heading settled" data-level="1.1" id="abstract"><span class="secno">1.1. </span><span class="content">Abstract</span><a class="self-link" href="#abstract"></a></h3>
    <p>This paper identifies a concern with part of the <strong>Stacktrace from exception</strong> <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a> proposal.
 We suggest an alternative approach and offer experience of potential implementation techniques.</p>
-   <h3 class="heading settled" data-level="1.2" id="background"><span class="secno">1.2. </span><span class="content">Background</span><a class="self-link" href="#background"></a></h3>
+   <h3 class="heading settled" data-level="1.2" id="motivation"><span class="secno">1.2. </span><span class="content">Motivation</span><a class="self-link" href="#motivation"></a></h3>
    <p>The paper <strong>Stacktrace from exception</strong> <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a> amply sets out why it is desired to be able to access a stacktrace from exception; that is, when <em>handling</em> an exception it
 should be
 possible to retrieve a stacktrace from the (most recent) <code class="highlight"><c- k>throw</c-></code> point of the exception, through the point of handling; and that this should be <em>transparent</em> to and not require <em>cooperation by</em> or <em>modification of</em> throwing code.  That paper acknowledges that the cost of taking a stacktrace on <em>every</em> exception throw would be prohibitive and proposes a

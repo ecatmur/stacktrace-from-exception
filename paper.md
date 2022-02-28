@@ -69,7 +69,7 @@ Editor: Ed Catmur, ed@catmur.uk
 This paper identifies a concern with part of the **Stacktrace from exception** [[p2370]] proposal.
 We suggest an alternative approach and offer experience of potential implementation techniques.
 
-## Background
+## Motivation
 
 The paper **Stacktrace from exception** [[p2370]] amply sets out why it is desired to be able to access a stacktrace from exception; that is, when *handling* an exception it
 should be
