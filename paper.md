@@ -66,8 +66,8 @@ Editor: Ed Catmur, ed@catmur.uk
 
 ## Abstract
 
-This paper identifies concerns with part of the **Stacktrace from exception** [[p2370]] proposal.  We suggest alternate approaches and offer implementation experience of the
-techniques that could underly such alternatives.
+This paper identifies a concern with part of the **Stacktrace from exception** [[p2370]] proposal.
+We suggest an alternative approach and offer experience of potential implementation techniques.
 
 ## Background
 
@@ -77,16 +77,9 @@ possible to retrieve a stacktrace from the (most recent) `throw` point of the ex
 *cooperation by* or *modification of* throwing code.  That paper acknowledges that the cost of taking a stacktrace on *every* exception throw would be prohibitive and proposes a
 mechanism to disable it via a standard library routine `std::this_thread::set_capture_stacktraces_at_throw` that will set a thread-local flag.
 
-We argue that this mechanism still imposes an unavoidable overhead and would not achieve the aims of the paper for the proposed facility; we propose an alternative interface
+We argue that this approach has sufficient drawbacks as to prevent the paper from achieving the aims of the proposed facility; we propose an alternative interface
 that leaves
 implementers the freedom to choose lower-cost implementation strategies, and demonstrate how those strategies can be implemented.
-
-### Constant overhead
-
-Accessing a thread-local variable (to check the flag on throwing) has a cost in instructions and memory access, even if the facility is not used; at present this could be
-argued to be lost in the "noise" of the existing exception handling
-machinery, particularly as this currently involves memory allocation, but in future if the **Zero-overhead deterministic exceptions: Throwing values** [[p0709]] proposal is 
-adopted this will become relatively more significant.
 
 ### Internally handled exceptions
 
@@ -98,9 +91,9 @@ cost will be considerable even for exceptions that are caught and handled succes
 API entry points, both negating the point of the facility for any exceptions that *do* leak out of the third-party library, and interfering with user code that expects it to
 remain enabled.
 
-### Old third-party libraries
+### Binary distributed libraries
 
-Under the proposed mechanism, code would need recompilation and/or relinking to participate in the facility, since the action to check the flag and take a stacktrace occurs at
+Under the mechanism proposed in [[p2370]], code would need recompilation and/or relinking to participate in the facility, since the action to check the flag and take a stacktrace occurs at
 the throw site.  It is not unusual that third-party library code is
 shipped with its own implementations of the exception-raising mechanism, such that it would not participate in the facility until such time as the vendor recompiles and relinks
 the library, which may not occur for some time.
@@ -138,16 +131,16 @@ Thank you especially to Antony Peacock for getting this paper ready for initial 
 
 : R0
 :: Initial revision; incorporated informal feedback.
-: R1 (unpublished)
+: R1
 :: Add `with_stacktrace` proposed syntax; add attribute syntax. Extend discussion of rethrow. Add discussion of fallback implementation, coroutines, and allocators.
 : R2
 :: Promote attribute syntax.
+: R3
+:: Clarify motivation
 
-# Possible syntaxes
+# Suggested syntax
 
 Note: some more alternative syntaxes are discussed in previous versions of this paper.
-
-## Attribute
 
 We suggest a syntax using an attribute `[[with_stacktrace]]` to the *exception-declaration* of the *handler* requesting exception stacktrace:
 
@@ -159,9 +152,9 @@ try {
 }
 ```
 
-This would require one minor grammar change, adding an optional *attribute-specifier-seq* to precede the `...` production of *exception-declaration*.
+This would require one minor grammar change, allowing an *attribute-specifier-seq* to precede the `...` production of *exception-declaration*.  By moving the *attribute-specifier-seq* to *handler*, this would in fact be a simplification.
 
-The `[[with_stacktrace]]` attribute would be permitted to appear on an *exception-declaration* only (though see [[#coroutines]]).
+The `[[with_stacktrace]]` attribute would be permitted to appear only on an *exception-declaration* (though see [[#coroutines]]).
 
 Semantically, an exception being handled has an *associated stacktrace*, which the implementation is encouraged to ensure extends at least from its most recent `throw` point (possibly a rethrow, see [[#rethrow]]) to the point where it is caught, only if the *exception-declaration* where it is caught (which may be `...`) has the attribute `[[with_stacktrace]]`; otherwise, the exception does not have an associated stacktrace.
 The static member function `std::stacktrace::from_current_exception()` (see [[p2370]]) returns (as `std::stacktrace`) the associated stacktrace of the currently handled exception if one exists, otherwise the return value is unspecified (or possibly empty, or possibly `std::stacktrace::current()`).
@@ -178,42 +171,6 @@ A possible disadvantage is that `std::stacktrace::from_current_exception()` woul
 This does not appear to be a problem in practice with `std::current_exception()`, and can be seen as an advantage if users wish to enable or disable the attribute via the preprocessor conditional on build type.
 
 An implementation of this syntax is presented in [[branch-attribute]].
-
-## Wrapper type
-
-Another possible syntax (suggested by Jonathan Wakely) that adds a special Library class template, `with_stacktrace`.
-Using an instantiation of this template in the exception-declaration of a handler requests exception stacktrace for any exception handled by that catch block.
-
-```c++
-try {
-    ...
-} catch (std::with_stacktrace<std::exception&> e) {
-    std::cout << e.get_exception().what() << "\n" << e.get_stacktrace() << std::endl;
-}
-```
-
-This would require special-case handling by the unwind mechanism to match the wrapped exception type, but no changes to C++ grammar.
-
-Drawbacks of this approach are greater verbosity, and making it more complicated to change existing source code.
-Further, this could easily be misunderstood as performing an implicit conversion from the thrown exception to a concrete `with_stacktrace` type.
-
-An implementation of this syntax is presented in [[branch]].
-
-## Additional parameter
-
-(Gašper Azman / Bronek Kozicki)
-
-```c++
-try {
-    ...
-} catch (std::exception& ex, std::stacktrace st) {
-    std::cout << ex.what() << "\n" << st << std::endl;
-}
-```
-
-This shows some similarity to Python [[python]], where `sys.exc_info` yields a tuple of exception and traceback.
-
-Drawbacks: new syntax, could be misunderstood as providing multiple types to be caught.
 
 # Concerns
 
@@ -232,12 +189,14 @@ of access to thread-local data would be justified since registering handlers req
 
 Indeed, any platform with two-phase lookup and dynamic search phase (either RTTI- or funclet-based) is suitable for implementation of the proposed mechanism. For platforms that 
 do not fall under this description, a thread-local flag can be used.  This would still have the advantage relative to the API suggested in [[p2370]] that the 
-`capture_stacktraces_at_throw` flag would be hidden and automatically set or restored to the appropriate value according to whether a stacktrace is requested in a particular 
+`capture_stacktraces_at_throw` flag would be hidden from user code, and would be automatically set or restored to the appropriate value according to whether a stacktrace is requested in a particular 
 (dynamic) scope.
 
-Finally, [[p0709]] suggests a "static" exception mechanism with linear control flow, where exception objects are passed back down the stack alongside return values.  If this
-proposal is adopted, it would be necessary to maintain the capture-stacktrace flag dynamically; however, since a new ABI would be required, this could be implemented efficiently 
-without recourse to thread-local storage (e.g. in registers).  In addition, since in that proposal the a rethrow (i.e. `throw;`) can only occur in a `catch` block it would be 
+Finally, [[p0709]] suggests a "static" exception mechanism with linear control flow, where exception objects are passed back down the stack alongside return values.
+Contra [[p2370]], we believe that this is compatible with exception stacktraces, especially if provision is made from the start; since a new ABI would be required, a per-thread flag could be maintained efficiently 
+without recourse to thread-local storage (e.g. in registers).
+Code taking the error path would test the flag and, if it is set, push the program counter onto a per-stack array.
+In addition, since in that proposal the a rethrow (i.e. `throw;`) can only occur in a `catch` block it would be 
 easy to track whether an exception can or cannot escape a particular block and so the value of the flag could be maintained accurately.
 
 ## Secrecy
@@ -267,7 +226,9 @@ extension, we are not pursuing it in this paper but leave it open for future dir
 In several places in the coroutines machinery exceptions are specified as being caught and rethrown, e.g. if the initial suspend throws (before initial *await-resume*), the exception is caught and rethrown to the coroutine caller; from this point onwards, exceptions are caught as if by `...` and `unhandled_exception` is called on the promise.
 This will result in stacktraces retrieved in the caller being truncated to the rethrow point, and not being available at all to `unhandled_exception`.
 
-It might be possible would be to extend the `[[with_stacktrace]]` attribute to `unhandled_exception`; truncation could be handled by making greater use of automatic object cleanups (which do not interrupt a stacktrace).
+The issue of truncation could be addressed by special wording; implementations may be able to use automatic object cleanups (which do not interrupt a stacktrace).
+
+`unhandled_exception` could be fixed by allowing the `[[with_stacktrace]` attribute to appertain to member function declarations as well as *exception-declarations*, such that it could be applied to a promise type's `unhandled_exception` member function, thereby directing the implementation to make exception stacktrace available to that handler.
 
 ## Allocators
 
@@ -293,5 +254,5 @@ consequent code block is to be selected as the handler.  We present a proof-of-c
 Although exception handling on Itanium is also two-phase, the handler selection mechanism is largely hidden from the user.  However, there is a workaround involving creating a
 type whose run-time type information (that is, its `typeid`) refers to an instance of a user-defined subclass of `std::type_info`.  This technique is not particularly widely 
 known, but has been used 
-in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation [[poc]] and branches of gcc implementing the 
-suggested `[[with_stacktrace]]` [[branch-attribute]] and `std::with_stacktrace<Ex>`  [[branch]] syntaxes.
+in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation [[poc]] and a fully working branch [[branch-attribute]] of gcc implementing the 
+suggested `[[with_stacktrace]]` syntax,
