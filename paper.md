@@ -8,7 +8,8 @@ Status: P
 Group: WG21
 Issue Tracking: GitHub https://github.com/ecatmur/stacktrace-from-exception/issues
 !Source: <a href="https://github.com/ecatmur/stacktrace-from-exception/blob/main/paper.md">github.com/ecatmur/stacktrace-from-exception/blob/main/paper.md</a>
-No Abstract: yes
+Abstract: This paper identifies a concern with part of the **Stacktrace from exception** [[p2370]] proposal.
+Abstract: We suggest an alternative approach and offer experience of potential implementation techniques.
 Markup Shorthands: markdown yes
 Markup Shorthands: biblio yes
 Editor: Ed Catmur, ed@catmur.uk
@@ -66,9 +67,7 @@ Editor: Ed Catmur, ed@catmur.uk
 }
 </pre>
 
-# Overview
-
-## Revision history
+# Revision history
 
 : R0
 :: Initial revision; incorporated informal feedback.
@@ -81,12 +80,7 @@ Editor: Ed Catmur, ed@catmur.uk
 : R4
 :: Clarify motivation. Move locus of attribute. Add `enabled` flag to fix catch-and-rethrow semantics.
 
-## Abstract
-
-This paper identifies a concern with part of the **Stacktrace from exception** [[p2370]] proposal.
-We suggest an alternative approach and offer experience of potential implementation techniques.
-
-## Motivation
+# Motivation
 
 The paper **Stacktrace from exception** [[p2370]] amply sets out why it is desired to be able to access a stacktrace from exception; that is, when *handling* an exception it should be possible to retrieve a stacktrace from the (most recent) `throw` point of the exception, through the point of handling; and that this should be *transparent* to and not require *cooperation by* or *modification of* throwing code.
 That paper acknowledges that the cost of taking a stacktrace on *every* exception throw would be prohibitive and proposes a mechanism to disable it via a standard library routine `std::this_thread::set_capture_stacktraces_at_throw` that should set a thread-local flag.
@@ -102,7 +96,7 @@ It can be seen that the drawbacks here arise from the interface; a flag that con
 But exception handling is non-local and crosses dynamic scopes; exception handling is a cooperative process between the throwing code and the handler.
 Indeed, once it has been established that a particular handler will be invoked for a certain exception, the cost of taking a stacktrace can be imputed to the handler, not the throw point, so the decision should likewise be made by the handler.
 
-### Other practical considerations
+## Other practical considerations
 
 The proposed mechanism adds state managed by the exception-handling component of the standard library.
 But this betrays an assumption that there is one and only one standard library; in fact, binary distributed libraries may contain their own copy of the language support library which would need to be made aware of this new facility and, more challenging, to share state.
@@ -145,10 +139,6 @@ This approach has several advantages:
 * *low-cost*: if the search phase reaches a *try-block* marked as not requiring stacktrace then behavior is entirely unaffected.
 * *graceful degradation*: if intermediate code (esp. catch-and-rethrow) fails to take a stacktrace at a point it should, there will still be a stacktrace from the most recent rethrow point available to the eventual handler.
 * *vendor freedom*: the implementer can implement the facility in whatever way is most efficient and appropriate for the targeted platform.
-
-## Acknowledgements
-
-Thank you especially to Antony Peacock for getting this paper ready for initial submission, and to Mathias Gaunard for inspiration, review and feedback. Thank you also to Jonathan Wakely and to members of BSI IST/5/-/21 (C++) panel for review and feedback.
 
 # Suggested syntax
 
@@ -275,3 +265,7 @@ Although exception handling on Itanium is also two-phase, the handler selection 
 However, there is a workaround involving creating atype whose run-time type information (that is, its `typeid`) refers to an instance of a user-defined subclass of `std::type_info`.  
 This technique is not particularly widely known, but has been used in several large proprietary code bases to good effect for some time.
 We present a proof-of-concept implementation [[poc]] and a fully working branch [[branch-attribute]] of gcc implementing the suggested `[[with_stacktrace]]` syntax, in an earlier version (appertaining to the *exception-declaration* of the handler).
+
+# Acknowledgements
+
+Thank you especially to Antony Peacock for getting this paper ready for initial submission, and to Mathias Gaunard for inspiration, review and feedback. Thank you also to Jonathan Wakely and to members of BSI IST/5/-/21 (C++) panel for review and feedback.
