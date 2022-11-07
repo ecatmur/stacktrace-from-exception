@@ -20,7 +20,7 @@ elseif(UNIX)
 endif()
 
 set(_paper P2490)
-set(_revision 3)
+set(_revision 4)
 find_program(CURL curl)
 if (CURL)
   add_custom_target(iso_paper

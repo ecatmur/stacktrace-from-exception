@@ -2,7 +2,7 @@
  <head>
   <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
   <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport">
-  <title>P2490R3: Zero-overhead exception stacktraces</title>
+  <title>P2490R4: Zero-overhead exception stacktraces</title>
 <style data-fill-with="stylesheet">/******************************************************************************
  *                   Style sheet for the W3C specifications                   *
  *
@@ -1560,7 +1560,7 @@ Possible extra rowspan handling
     blockquote c-[vi] { color: inherit; } /* Name.Variable.Instance */
     blockquote c-[il] { color: inherit; } /* Literal.Number.Integer.Long */
   </style>
-  <meta content="Bikeshed version 2e3c4c68b, updated Fri Jan 14 14:49:00 2022 -0800" name="generator">
+  <meta content="Bikeshed version 63e66730b, updated Tue Oct 25 12:35:05 2022 -0700" name="generator">
   <link href="https://wg21.link/P2490" rel="canonical">
   <link href="https://isocpp.org/favicon.ico" rel="icon">
 <style>/* style-autolinks */
@@ -1809,6 +1809,14 @@ a.self-link:hover {
 }
 .heading > a.self-link {
     font-size: 83%;
+}
+.example > a.self-link,
+.note > a.self-link,
+.issue > a.self-link {
+    /* These blocks are overflow:auto, so positioning outside
+       doesn't work. */
+    left: auto;
+    right: 0;
 }
 li > a.self-link {
     left: calc(-1 * (3.5rem - 26px) - 2em);
@@ -2081,8 +2089,8 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
  <body class="h-entry">
   <div class="head">
    <p data-fill-with="logo"></p>
-   <h1 class="p-name no-ref" id="title">P2490R3<br>Zero-overhead exception stacktraces</h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2022-02-28">2022-02-28</time></span></h2>
+   <h1 class="p-name no-ref" id="title">P2490R4<br>Zero-overhead exception stacktraces</h1>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2022-11-06">2022-11-06</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt>This version:
@@ -2102,39 +2110,47 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    <div data-fill-with="warning"></div>
    <hr title="Separator for header">
   </div>
+  <div class="p-summary" data-fill-with="abstract">
+   <h2 class="no-num no-toc no-ref heading settled" id="abstract"><span class="content">Abstract</span></h2>
+   <p>This paper identifies a concern with part of the <strong>Stacktrace from exception</strong> <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a> proposal.
+
+We suggest an alternative approach and offer experience of potential implementation techniques.</p>
+  </div>
   <nav data-fill-with="table-of-contents" id="toc">
    <h2 class="no-num no-toc no-ref" id="contents">Table of Contents</h2>
    <ol class="toc" role="directory">
+    <li><a href="#revision-history"><span class="secno">1</span> <span class="content">Revision history</span></a>
     <li>
-     <a href="#overview"><span class="secno">1</span> <span class="content">Overview</span></a>
+     <a href="#motivation"><span class="secno">2</span> <span class="content">Motivation</span></a>
      <ol class="toc">
-      <li><a href="#abstract"><span class="secno">1.1</span> <span class="content">Abstract</span></a>
+      <li><a href="#other-practical-considerations"><span class="secno">2.1</span> <span class="content">Other practical considerations</span></a>
       <li>
-       <a href="#motivation"><span class="secno">1.2</span> <span class="content">Motivation</span></a>
+       <a href="#alternative"><span class="secno">2.2</span> <span class="content">Alternative</span></a>
        <ol class="toc">
-        <li><a href="#internally-handled-exceptions"><span class="secno">1.2.1</span> <span class="content">Internally handled exceptions</span></a>
-        <li><a href="#binary-distributed-libraries"><span class="secno">1.2.2</span> <span class="content">Binary distributed libraries</span></a>
+        <li><a href="#two-phase-exception-handling"><span class="secno">2.2.1</span> <span class="content">Two-phase exception handling</span></a>
+        <li><a href="#mechanism"><span class="secno">2.2.2</span> <span class="content">Mechanism</span></a>
        </ol>
-      <li><a href="#alternatives"><span class="secno">1.3</span> <span class="content">Alternatives</span></a>
-      <li><a href="#acknowledgements"><span class="secno">1.4</span> <span class="content">Acknowledgements</span></a>
-      <li><a href="#revision-history"><span class="secno">1.5</span> <span class="content">Revision history</span></a>
      </ol>
-    <li><a href="#suggested-syntax"><span class="secno">2</span> <span class="content">Suggested syntax</span></a>
+    <li><a href="#suggested-syntax"><span class="secno">3</span> <span class="content">Suggested syntax</span></a>
     <li>
-     <a href="#concerns"><span class="secno">3</span> <span class="content">Concerns</span></a>
+     <a href="#concerns"><span class="secno">4</span> <span class="content">Concerns</span></a>
      <ol class="toc">
-      <li><a href="#implementability"><span class="secno">3.1</span> <span class="content">Implementability</span></a>
-      <li><a href="#secrecy"><span class="secno">3.2</span> <span class="content">Secrecy</span></a>
-      <li><a href="#rethrow"><span class="secno">3.3</span> <span class="content">Rethrow</span></a>
-      <li><a href="#coroutines"><span class="secno">3.4</span> <span class="content">Coroutines</span></a>
-      <li><a href="#allocators"><span class="secno">3.5</span> <span class="content">Allocators</span></a>
+      <li><a href="#implementability"><span class="secno">4.1</span> <span class="content">Implementability</span></a>
+      <li><a href="#secrecy"><span class="secno">4.2</span> <span class="content">Secrecy</span></a>
+      <li><a href="#rethrow"><span class="secno">4.3</span> <span class="content">Rethrow</span></a>
+      <li><a href="#coroutines"><span class="secno">4.4</span> <span class="content">Coroutines</span></a>
+      <li><a href="#allocators"><span class="secno">4.5</span> <span class="content">Allocators</span></a>
+      <li><a href="#stdterminate"><span class="secno">4.6</span> <span class="content"><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code></span></a>
+      <li><a href="#lippincott-functions"><span class="secno">4.7</span> <span class="content">Lippincott functions</span></a>
+      <li><a href="#attribute-argument"><span class="secno">4.8</span> <span class="content">Attribute argument</span></a>
      </ol>
     <li>
-     <a href="#implementation-experience"><span class="secno">4</span> <span class="content">Implementation experience</span></a>
+     <a href="#implementation-experience"><span class="secno">5</span> <span class="content">Implementation experience</span></a>
      <ol class="toc">
-      <li><a href="#windows-seh"><span class="secno">4.1</span> <span class="content">Windows (SEH)</span></a>
-      <li><a href="#linux-rtti"><span class="secno">4.2</span> <span class="content">Linux (RTTI)</span></a>
+      <li><a href="#windows-seh"><span class="secno">5.1</span> <span class="content">Windows (SEH)</span></a>
+      <li><a href="#linux-rtti"><span class="secno">5.2</span> <span class="content">Linux (RTTI)</span></a>
      </ol>
+    <li><a href="#acknowledgements"><span class="secno">6</span> <span class="content">Acknowledgements</span></a>
     <li>
      <a href="#references"><span class="secno"></span> <span class="content">References</span></a>
      <ol class="toc">
@@ -2143,65 +2159,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
    </ol>
   </nav>
   <main>
-   <h2 class="heading settled" data-level="1" id="overview"><span class="secno">1. </span><span class="content">Overview</span><a class="self-link" href="#overview"></a></h2>
-   <h3 class="heading settled" data-level="1.1" id="abstract"><span class="secno">1.1. </span><span class="content">Abstract</span><a class="self-link" href="#abstract"></a></h3>
-   <p>This paper identifies a concern with part of the <strong>Stacktrace from exception</strong> <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a> proposal.
-We suggest an alternative approach and offer experience of potential implementation techniques.</p>
-   <h3 class="heading settled" data-level="1.2" id="motivation"><span class="secno">1.2. </span><span class="content">Motivation</span><a class="self-link" href="#motivation"></a></h3>
-   <p>The paper <strong>Stacktrace from exception</strong> <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a> amply sets out why it is desired to be able to access a stacktrace from exception; that is, when <em>handling</em> an exception it
-should be
-possible to retrieve a stacktrace from the (most recent) <code class="highlight"><c- k>throw</c-></code> point of the exception, through the point of handling; and that this should be <em>transparent</em> to and not require <em>cooperation by</em> or <em>modification of</em> throwing code.  That paper acknowledges that the cost of taking a stacktrace on <em>every</em> exception throw would be prohibitive and proposes a
-mechanism to disable it via a standard library routine <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>set_capture_stacktraces_at_throw</c-></code> that will set a thread-local flag.</p>
-   <p>We argue that this approach has sufficient drawbacks as to prevent the paper from achieving the aims of the proposed facility; we propose an alternative interface
-that leaves
-implementers the freedom to choose lower-cost implementation strategies, and demonstrate how those strategies can be implemented.</p>
-   <h4 class="heading settled" data-level="1.2.1" id="internally-handled-exceptions"><span class="secno">1.2.1. </span><span class="content">Internally handled exceptions</span><a class="self-link" href="#internally-handled-exceptions"></a></h4>
-   <p>When an exception is thrown and handled internally by a (possibly third-party) library, under the proposed mechanism the cost of taking a stacktrace will be incurred even if
-the internal handler does not access it.</p>
-   <p>Third-party library vendors who use exceptions for control flow may be expected to view the proposed facility negatively; if user code enables it via the proposed mechanism the
-cost will be considerable even for exceptions that are caught and handled successfully entirely within the third-party library.  Thus they are likely to disable the facility at
-API entry points, both negating the point of the facility for any exceptions that <em>do</em> leak out of the third-party library, and interfering with user code that expects it to
-remain enabled.</p>
-   <h4 class="heading settled" data-level="1.2.2" id="binary-distributed-libraries"><span class="secno">1.2.2. </span><span class="content">Binary distributed libraries</span><a class="self-link" href="#binary-distributed-libraries"></a></h4>
-   <p>Under the mechanism proposed in <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a>, code would need recompilation and/or relinking to participate in the facility, since the action to check the flag and take a stacktrace occurs at
-the throw site.  It is not unusual that third-party library code is
-shipped with its own implementations of the exception-raising mechanism, such that it would not participate in the facility until such time as the vendor recompiles and relinks
-the library, which may not occur for some time.</p>
-   <h3 class="heading settled" data-level="1.3" id="alternatives"><span class="secno">1.3. </span><span class="content">Alternatives</span><a class="self-link" href="#alternatives"></a></h3>
-   <p>We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.  On Windows this is structured exception handling <a data-link-type="biblio" href="#biblio-seh">[seh]</a>,
-while on the Itanium ABI (used by most Unix-style OSes on x64-64) it is the Level I Base ABI <a data-link-type="biblio" href="#biblio-itanium">[itanium]</a>.  This lower-level facility uses <em>two-phase</em> exception handling; in 
-the first, "search" phase the stack is walked from the throw point to identify a suitable handler, while in the second, "unwind" phase it is walked again from the 
-throw point to the selected handler, this time invoking cleanup (i.e., destructors) along the way. Importantly,</p>
-   <ul>
-    <li data-md>
-     <p>during the whole of the search phase the stack is still intact, and</p>
-    <li data-md>
-     <p>identifying a handler is <em>dynamic</em>, calling into a compiler- or library-generated match function.</p>
-   </ul>
-   <p>This suggests a possible alternative mechanism; viz.:</p>
-   <ul>
-    <li data-md>
-     <p>user code can mark a <code class="highlight"><c- k>catch</c-></code> block as requiring a stacktrace, either via a special function or via new syntax; and</p>
-    <li data-md>
-     <p>on recognising <code class="highlight"><c- k>catch</c-></code> blocks so marked, the compiler can emit suitable code or data such that <em>if and when</em> that <code class="highlight"><c- k>catch</c-></code> block is selected as a handler for a thrown
-  exception, it takes a stacktrace during search phase, immediately before nominating that <code class="highlight"><c- k>catch</c-></code> block as a suitable handler; then</p>
-    <li data-md>
-     <p>the user code can retrieve that stored stacktrace during exception handling, after stack unwinding.</p>
-   </ul>
-   <p>This approach has several advantages:</p>
-   <ul>
-    <li data-md>
-     <p><em>transparency</em>: there is no need whatsoever for throwing code to be modified, recompiled or relinked.  Indeed, since this mechanism relies solely on changes to the catch
-  site, code using this mechanism may be introduced into existing (perhaps even running) programs without any need for those programs to be recompiled or relinked, as long as that new code has access
-  to any necessary support libraries;</p>
-    <li data-md>
-     <p><em>zero-cost</em>: if the search phase does not reach a <code class="highlight"><c- k>catch</c-></code> block so marked (i.e., if the exception is caught and handled internally) then behavior is entirely unaffected.</p>
-    <li data-md>
-     <p><em>vendor freedom</em>: the implementer can implement the facility in whatever way is most efficient and appropriate for the targeted platform.</p>
-   </ul>
-   <h3 class="heading settled" data-level="1.4" id="acknowledgements"><span class="secno">1.4. </span><span class="content">Acknowledgements</span><a class="self-link" href="#acknowledgements"></a></h3>
-   <p>Thank you especially to Antony Peacock for getting this paper ready for initial submission, and to Mathias Gaunard for inspiration, review and feedback. Thank you also to Jonathan Wakely and to members of BSI IST/5/-/21 (C++) panel for review and feedback.</p>
-   <h3 class="heading settled" data-level="1.5" id="revision-history"><span class="secno">1.5. </span><span class="content">Revision history</span><a class="self-link" href="#revision-history"></a></h3>
+   <h2 class="heading settled" data-level="1" id="revision-history"><span class="secno">1. </span><span class="content">Revision history</span><a class="self-link" href="#revision-history"></a></h2>
    <dl>
     <dt data-md>R0
     <dd data-md>
@@ -2215,19 +2173,92 @@ throw point to the selected handler, this time invoking cleanup (i.e., destructo
     <dt data-md>R3
     <dd data-md>
      <p>Clarify motivation</p>
+    <dt data-md>R4
+    <dd data-md>
+     <p>Clarify motivation. Move locus of attribute. Add <code class="highlight"><c- n>enabled</c-></code> flag to fix catch-and-rethrow semantics.</p>
    </dl>
-   <h2 class="heading settled" data-level="2" id="suggested-syntax"><span class="secno">2. </span><span class="content">Suggested syntax</span><a class="self-link" href="#suggested-syntax"></a></h2>
+   <h2 class="heading settled" data-level="2" id="motivation"><span class="secno">2. </span><span class="content">Motivation</span><a class="self-link" href="#motivation"></a></h2>
+   <p>The paper <strong>Stacktrace from exception</strong> <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a> amply sets out why it is desired to be able to access a stacktrace from exception; that is, when <em>handling</em> an exception it should be possible to retrieve a stacktrace from the (most recent) <code class="highlight"><c- k>throw</c-></code> point of the exception, through the point of handling; and that this should be <em>transparent</em> to and not require <em>cooperation by</em> or <em>modification of</em> throwing code.
+That paper acknowledges that the cost of taking a stacktrace on <em>every</em> exception throw would be prohibitive and proposes a mechanism to disable it via a standard library routine <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>set_capture_stacktraces_at_throw</c-></code> that should set a thread-local flag.</p>
+   <p>We are concerned that this will not work as intended.
+Consider a program <em>P</em> that calls functions <code class="highlight"><c- n>A</c-><c- o>::</c-><c- n>f</c-></code> and <code class="highlight"><c- n>B</c-><c- o>::</c-><c- n>g</c-></code> located in libraries <em>A</em> and <em>B</em> respectively.
+If library <em>A</em> uses exceptions extensively (for example, in control flow to escape heavily-nested contexts) its authors may be expected to view the proposed facility negatively; if <code class="highlight"><c- n>main</c-></code> of <em>P</em> enabled exception stacktraces via the proposed mechanism the cost will be considerable even for exceptions that are caught and handled successfully entirely within <em>A</em>.
+Thus they are likely to disable the facility at API entry points <code class="highlight"><c- n>A</c-><c- o>::</c-><c- n>f</c-></code>, both negating the point of the facility for any exceptions that <em>do</em> leak out of <em>A</em>, and interfering with user code that expects it to remain enabled.
+That is, if <code class="highlight"><c- n>main</c-></code> of <em>P</em> calls <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>set_capture_stacktraces_at_throw</c-><c- p>(</c->true<c- p>)</c-></code> and <code class="highlight"><c- n>A</c-><c- o>::</c-><c- n>f</c-></code> disables the facility but does not restore the previous value of the flag, when <em>P</em> calls <code class="highlight"><c- n>B</c-><c- o>::</c-><c- n>g</c-></code> and if that function throws, a handler in <em>P</em> will find that exception stacktrace is not available.
+Even if <code class="highlight"><c- n>A</c-><c- o>::</c-><c- n>f</c-></code> restores the previous value of the flag on exit, if an exception is thrown out of <em>A</em> that exception will not carry stacktrace information as expected by handlers in <em>P</em>.</p>
+   <p>It can be seen that the drawbacks here arise from the interface; a flag that controls the behavior of the exception-raising machinery of the standard library is in effect within the dynamic scope of the code setting that flag.
+But exception handling is non-local and crosses dynamic scopes; exception handling is a cooperative process between the throwing code and the handler.
+Indeed, once it has been established that a particular handler will be invoked for a certain exception, the cost of taking a stacktrace can be imputed to the handler, not the throw point, so the decision should likewise be made by the handler.</p>
+   <h3 class="heading settled" data-level="2.1" id="other-practical-considerations"><span class="secno">2.1. </span><span class="content">Other practical considerations</span><a class="self-link" href="#other-practical-considerations"></a></h3>
+   <p>The proposed mechanism adds state managed by the exception-handling component of the standard library.
+But this betrays an assumption that there is one and only one standard library; in fact, binary distributed libraries may contain their own copy of the language support library which would need to be made aware of this new facility and, more challenging, to share state.
+Also, C++ is not the only language to use exceptions; multiple-language programs that catch "foreign" exceptions thrown in another language would benefit from being able to retrieve a stacktrace for such exceptions.</p>
+   <h3 class="heading settled" data-level="2.2" id="alternative"><span class="secno">2.2. </span><span class="content">Alternative</span><a class="self-link" href="#alternative"></a></h3>
+   <p>As noted above, the decision of whether to pay the cost of taking a stacktrace on exception is best assigned to the handler.
+This suggests a facility for allowing handlers to mark themselves as:</p>
+   <ol>
+    <li data-md>
+     <p>requiring stacktrace,</p>
+    <li data-md>
+     <p>not requiring stacktrace, or</p>
+    <li data-md>
+     <p>agnostic (e.g. cleanup blocks that catch-and-rethrow)</p>
+   </ol>
+   <p>At minimum, this can be implemented by setting and restoring a per-thread flag, as with the suggested <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>this_thread</c-><c- o>::</c-><c- n>set_capture_stacktraces_at_throw</c-></code>, but without the danger that the user will forget to restore the flag on exit from the handler.
+However, we can do better.</p>
+   <h4 class="heading settled" data-level="2.2.1" id="two-phase-exception-handling"><span class="secno">2.2.1. </span><span class="content">Two-phase exception handling</span><a class="self-link" href="#two-phase-exception-handling"></a></h4>
+   <p>We note that C++ exception handling is typically built on top of a lower-level, language-agnostic facility.
+On Windows this is structured exception handling <a data-link-type="biblio" href="#biblio-seh">[seh]</a>, while on the Itanium ABI (used by most Unix-style OSes on x64-64) it is the Level I Base ABI <a data-link-type="biblio" href="#biblio-itanium">[itanium]</a>.  
+This lower-level facility uses <em>two-phase</em> exception handling; in  the first, "search" phase the stack is walked from the throw point to identify a suitable handler, while in the second, "unwind" phase it is walked again from the throw point to the selected handler, this time invoking cleanup (i.e., destructors) along the way. 
+Importantly,</p>
+   <ul>
+    <li data-md>
+     <p>during the whole of the search phase the stack is still intact, and</p>
+    <li data-md>
+     <p>identifying a handler is <em>dynamic</em>, calling into a compiler- or library-generated match function.</p>
+   </ul>
+   <h4 class="heading settled" data-level="2.2.2" id="mechanism"><span class="secno">2.2.2. </span><span class="content">Mechanism</span><a class="self-link" href="#mechanism"></a></h4>
+   <p>This suggests a possible alternative mechanism, whereby:</p>
+   <ul>
+    <li data-md>
+     <p>user code can mark a handler block as requiring or not requiring a stacktrace, by some appropriate mechanism; and</p>
+    <li data-md>
+     <p>on entry to that handler, a per-thread flag may be set, however</p>
+    <li data-md>
+     <p>on recognising handlers so marked, the compiler can emit suitable code or data such that <em>if and when</em> that handler is selected for a thrown exception, the decision is immediately made whether to take a stacktrace before stack unwinding, alternatively</p>
+    <li data-md>
+     <p>if the handler is not so marked, the per-thread flag is consulted to decide whether to take a stacktrace, then</p>
+    <li data-md>
+     <p>the user code can retrieve that stored stacktrace during exception handling, after stack unwinding.</p>
+   </ul>
+   <p>This approach has several advantages:</p>
+   <ul>
+    <li data-md>
+     <p><em>transparency</em>: there is no need whatsoever for throwing code to be modified, recompiled or relinked.  Indeed, since this mechanism relies solely on changes to the catch site, code using this mechanism may be introduced into existing (perhaps even running) programs without any need for those programs to be recompiled or relinked, as long as that new code has access to any necessary support libraries;</p>
+    <li data-md>
+     <p><em>low-cost</em>: if the search phase reaches a <em>try-block</em> marked as not requiring stacktrace then behavior is entirely unaffected.</p>
+    <li data-md>
+     <p><em>graceful degradation</em>: if intermediate code (esp. catch-and-rethrow) fails to take a stacktrace at a point it should, there will still be a stacktrace from the most recent rethrow point available to the eventual handler.</p>
+    <li data-md>
+     <p><em>vendor freedom</em>: the implementer can implement the facility in whatever way is most efficient and appropriate for the targeted platform.</p>
+   </ul>
+   <h2 class="heading settled" data-level="3" id="suggested-syntax"><span class="secno">3. </span><span class="content">Suggested syntax</span><a class="self-link" href="#suggested-syntax"></a></h2>
    <p class="note" role="note"><span>Note:</span> some more alternative syntaxes are discussed in previous versions of this paper.</p>
-   <p>We suggest a syntax using an attribute <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code> to the <em>exception-declaration</em> of the <em>handler</em> requesting exception stacktrace:</p>
-<pre class="language-c++ highlight"><c- n>try</c-> <c- p>{</c->
+   <p>We suggest a syntax using an attribute <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>(</c-><c- n>enabled</c-><c- p>)]]</c-></code> (with <code class="highlight"><c- b>bool</c-></code> argument defaulting to <code class="highlight">true</code>) appertaining to <em>try-block</em>:</p>
+<pre class="language-c++ highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>(</c->true<c- p>)]]</c-> <c- n>try</c-> <c- p>{</c->
     <c- p>...</c->
-<c- p>}</c-> <c- n>catch</c-> <c- p>([[</c-><c- n>with_stacktrace</c-><c- p>]]</c-> <c- n>std</c-><c- o>::</c-><c- n>exception</c-><c- o>&amp;</c-> <c- n>e</c-><c- p>)</c-> <c- p>{</c->
+<c- p>}</c-> <c- n>catch</c-> <c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>exception</c-><c- o>&amp;</c-> <c- n>e</c-><c- p>)</c-> <c- p>{</c->
     <c- n>std</c-><c- o>::</c-><c- n>cout</c-> <c- o>&lt;&lt;</c-> <c- n>e</c-><c- p>.</c-><c- n>what</c-><c- p>()</c-> <c- o>&lt;&lt;</c-> <c- s>"</c-><c- se>\n</c-><c- s>"</c-> <c- o>&lt;&lt;</c-> <c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>()</c-> <c- o>&lt;&lt;</c-> <c- n>std</c-><c- o>::</c-><c- n>endl</c-><c- p>;</c->
 <c- p>}</c->
 </pre>
-   <p>This would require one minor grammar change, allowing an <em>attribute-specifier-seq</em> to precede the <code class="highlight"><c- p>...</c-></code> production of <em>exception-declaration</em>.  By moving the <em>attribute-specifier-seq</em> to <em>handler</em>, this would in fact be a simplification.</p>
-   <p>The <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code> attribute would be permitted to appear only on an <em>exception-declaration</em> (though see <a href="#coroutines">§ 3.4 Coroutines</a>).</p>
-   <p>Semantically, an exception being handled has an <em>associated stacktrace</em>, which the implementation is encouraged to ensure extends at least from its most recent <code class="highlight"><c- k>throw</c-></code> point (possibly a rethrow, see <a href="#rethrow">§ 3.3 Rethrow</a>) to the point where it is caught, only if the <em>exception-declaration</em> where it is caught (which may be <code class="highlight"><c- p>...</c-></code>) has the attribute <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code>; otherwise, the exception does not have an associated stacktrace.
+   <p>Alternatively, the attribute could be placed on the <em>exception-declaration</em> of the <em>handler</em>: <code class="highlight"><c- k>catch</c-> <c- p>([[</c-><c- n>with_stacktrace</c-><c- p>]]</c-> <c- n>std</c-><c- o>::</c-><c- n>exception</c-><c- o>*</c-> <c- n>e</c-><c- p>)</c-></code>.
+This would require one minor grammar change, allowing an <em>attribute-specifier-seq</em> to precede the <code class="highlight"><c- p>...</c-></code> production of <em>exception-declaration</em>.
+By moving the <em>attribute-specifier-seq</em> to <em>handler</em>, this would in fact be a simplification.
+This would allow (possibly unnecessarily) finer-grained control, but at the cost of obscuring the dynamic effect of the attribute (since it has some effect on code running with in the <em>compound-statement</em> of the <em>try-block</em>.</p>
+   <p>The <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code> attribute would be permitted to appear on a <em>try-block</em>, and possibly on some functions (see <a href="#coroutines">§ 4.4 Coroutines</a>).</p>
+   <p>Semantically, each thread has an <em>exception stacktrace flag</em>, initially <code class="highlight">false</code>, which is updated and restored on entry to and exit from a <em>try_block</em> using the <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code> attribute.
+An exception being handled has an <em>associated stacktrace</em> if the <em>try-block</em> where it will be handled has the attribute <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>(</c->true<c- p>)]]</c-></code> or if the <em>exception stacktrace flag</em> is <code class="highlight">true</code> and the <em>try-block</em> does not have the attribute <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>(</c->false<c- p>)]]</c-></code>; otherwise, the exception does not have an associated stacktrace.
+The implementation is encouraged to ensure any <em>associated stacktrace</em> extends at least from its most recent <code class="highlight"><c- k>throw</c-></code> point (possibly a rethrow, see <a href="#rethrow">§ 4.3 Rethrow</a>) to the point where it is caught.
 The static member function <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>()</c-></code> (see <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a>) returns (as <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-></code>) the associated stacktrace of the currently handled exception if one exists, otherwise the return value is unspecified (or possibly empty, or possibly <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>current</c-><c- p>()</c-></code>).</p>
    <p>Note that the interface for <em>accessing</em> the stored stacktrace is the same as in <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a>; it is only the interface for <em>requesting</em> that it be stored that is different.</p>
    <p>The attribute syntax is in keeping with the nature of this facility as a request to the implementation that can be ignored if unsupported.
@@ -2237,62 +2268,63 @@ It would also make it conceivable to add further diagnostic information in futur
    <p>A possible disadvantage is that <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>()</c-></code> would fail at runtime (possibly in an unspecified manner) in case the current exception being handled does not have an associated stacktrace, or if there is no current exception being handled.
 This does not appear to be a problem in practice with <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>current_exception</c-><c- p>()</c-></code>, and can be seen as an advantage if users wish to enable or disable the attribute via the preprocessor conditional on build type.</p>
    <p>An implementation of this syntax is presented in <a data-link-type="biblio" href="#biblio-branch-attribute">[branch-attribute]</a>.</p>
-   <h2 class="heading settled" data-level="3" id="concerns"><span class="secno">3. </span><span class="content">Concerns</span><a class="self-link" href="#concerns"></a></h2>
-   <h3 class="heading settled" data-level="3.1" id="implementability"><span class="secno">3.1. </span><span class="content">Implementability</span><a class="self-link" href="#implementability"></a></h3>
-   <p>As discussed above, Windows uses SEH <a data-link-type="biblio" href="#biblio-seh">[seh]</a>, and many Unix-like platforms including Linux use the Itanium ABI <a data-link-type="biblio" href="#biblio-itanium">[itanium]</a>; both of these are zero-cost on the happy path
-(that is, they do not emit code to be called on entry to or exit from a <code class="highlight"><c- k>try</c-></code>), and both permit calling arbitrary code during search phase (the former via arbitrary <em>funclet</em>s,
-small segments of code with a special calling convention that are used to implement matching and cleanup; the latter via RTTI), before stack unwinding; as such, we suggest that
-these platforms should implement this facility via a similarly zero-cost approach.</p>
-   <p>Another exception handling methodology in use is setjmp/longjmp (SJLJ, see <a data-link-type="biblio" href="#biblio-llvm">[llvm]</a>); this also has two-phase unwinding but registers handlers on a stack at runtime, so could
-either use a zero-cost approach or choose to store a thread-local flag as in <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a>, instructing the exception mechanism to take a stacktrace at the point 
-of <code class="highlight"><c- k>throw</c-></code>. This flag would be set to <code class="highlight">true</code> on entry to a <code class="highlight"><c- k>try</c-></code> block with accompanying <code class="highlight"><c- k>catch</c-></code> block marked as requiring stacktrace, to <code class="highlight">false</code> on entry to <code class="highlight"><c- k>noexcept</c-></code> functions and to <code class="highlight"><c- k>try</c-></code> blocks with accompanying <code class="highlight"><c- k>catch</c-><c- p>(...)</c-></code> block not marked as requiring stacktrace, and restored to its previous value during stack unwinding.  The overhead
-of access to thread-local data would be justified since registering handlers requires access to thread-local data (the handler stack) anyway.</p>
-   <p>Indeed, any platform with two-phase lookup and dynamic search phase (either RTTI- or funclet-based) is suitable for implementation of the proposed mechanism. For platforms that
-do not fall under this description, a thread-local flag can be used.  This would still have the advantage relative to the API suggested in <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a> that the <code class="highlight"><c- n>capture_stacktraces_at_throw</c-></code> flag would be hidden from user code, and would be automatically set or restored to the appropriate value according to whether a stacktrace is requested in a particular 
-(dynamic) scope.</p>
+   <h2 class="heading settled" data-level="4" id="concerns"><span class="secno">4. </span><span class="content">Concerns</span><a class="self-link" href="#concerns"></a></h2>
+   <h3 class="heading settled" data-level="4.1" id="implementability"><span class="secno">4.1. </span><span class="content">Implementability</span><a class="self-link" href="#implementability"></a></h3>
+   <p>As discussed above, Windows uses SEH <a data-link-type="biblio" href="#biblio-seh">[seh]</a>, and many Unix-like platforms including Linux use the Itanium ABI <a data-link-type="biblio" href="#biblio-itanium">[itanium]</a>; both of these are zero-cost on the happy path (that is, they do not emit code to be called on entry to or exit from a <code class="highlight"><c- k>try</c-></code>), and both permit calling arbitrary code during search phase (the former via arbitrary <em>funclet</em>s, small segments of code with a special calling convention that are used to implement matching and cleanup; the latter via RTTI), before stack unwinding; as such, we suggest that these platforms should implement this facility in full.</p>
+   <p>For exception handling methods using RTTI, the decision to be made is whether to take the stacktrace within the RTTI hooks or in the language support library.
+We leave this choice to implementors but note that the former requires less coordination between throwing and catching code.</p>
+   <p>Another exception handling methodology in use is setjmp/longjmp (SJLJ, see <a data-link-type="biblio" href="#biblio-llvm">[llvm]</a>); this also has two-phase unwinding but registers handlers on a stack at runtime, so could readily implement this facility.</p>
+   <p>Indeed, any platform with two-phase lookup and dynamic search phase (either RTTI- or funclet-based) is suitable for implementation of the proposed mechanism.
+For platforms that do not fall under this description, the thread-local flag alone can be used.
+This would still have the advantage relative to the API suggested in <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a> that the <code class="highlight"><c- n>capture_stacktraces_at_throw</c-></code> flag would be hidden from user code, and would be automatically set or restored to the appropriate value according to whether a stacktrace is requested in a particular (dynamic) scope.</p>
    <p>Finally, <a data-link-type="biblio" href="#biblio-p0709">[p0709]</a> suggests a "static" exception mechanism with linear control flow, where exception objects are passed back down the stack alongside return values.
-Contra <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a>, we believe that this is compatible with exception stacktraces, especially if provision is made from the start; since a new ABI would be required, a per-thread flag could be maintained efficiently 
-without recourse to thread-local storage (e.g. in registers).
+Contra <a data-link-type="biblio" href="#biblio-p2370">[p2370]</a>, we believe that this is compatible with exception stacktraces, especially if provision is made from the start; since a new ABI would be required, a per-thread flag could be maintained efficiently without recourse to thread-local storage (e.g. in registers).
 Code taking the error path would test the flag and, if it is set, push the program counter onto a per-stack array.
-In addition, since in that proposal the a rethrow (i.e. <code class="highlight"><c- k>throw</c-><c- p>;</c-></code>) can only occur in a <code class="highlight"><c- k>catch</c-></code> block it would be 
-easy to track whether an exception can or cannot escape a particular block and so the value of the flag could be maintained accurately.</p>
-   <h3 class="heading settled" data-level="3.2" id="secrecy"><span class="secno">3.2. </span><span class="content">Secrecy</span><a class="self-link" href="#secrecy"></a></h3>
-   <p>Third-party vendors who view secrecy as a virtue may be tempted to put <code class="highlight"><c- k>catch</c-> <c- p>(...)</c-></code> blocks at API entry points to prevent information on their library internals leaking
-out.  In practice they can achieve much the same end by stripping debug symbols and obfuscating object names, and are likely to do so; meanwhile the same information is 
+In addition, since in that proposal the a rethrow (i.e. <code class="highlight"><c- k>throw</c-><c- p>;</c-></code>) can only occur in a <code class="highlight"><c- k>catch</c-></code> block it would be easy to track whether an exception can or cannot escape a particular block and so the value of the flag could be maintained accurately.</p>
+   <h3 class="heading settled" data-level="4.2" id="secrecy"><span class="secno">4.2. </span><span class="content">Secrecy</span><a class="self-link" href="#secrecy"></a></h3>
+   <p>Third-party vendors who view secrecy as a virtue may be tempted to put <code class="highlight"><c- k>catch</c-> <c- p>(...)</c-></code> blocks at API entry points to prevent information on their library internals leaking out.
+In practice they can achieve much the same end by stripping debug symbols and obfuscating object names, and are likely to do so; meanwhile the same information is 
 available by attaching a debugger.</p>
-   <p>It has been suggested that the Standard may wish to provide an attribute for users to denote that a stack frame should be omitted from stack traces. We consider this out of
-scope for this proposal.</p>
-   <h3 class="heading settled" data-level="3.3" id="rethrow"><span class="secno">3.3. </span><span class="content">Rethrow</span><a class="self-link" href="#rethrow"></a></h3>
-   <p>For a <em>rethrown</em> exception (using <code class="highlight"><c- k>throw</c-><c- p>;</c-></code>, <code class="highlight"><c- n>rethrow_exception</c-></code>, <code class="highlight"><c- n>throw_with_nested</c-></code>, etc.) the stacktrace will be truncated from the rethrow point.  We could provide mechanisms
-to alleviate this; for example, we could specify that <code class="highlight"><c- k>throw</c-><c- p>;</c-></code> preserves stacktrace (specifically, that the accompanying stacktrace of a rethrown exception begins with the 
-stacktrace captured for the use of its containing <code class="highlight"><c- k>catch</c-></code>).</p>
-   <p>However, since <code class="highlight"><c- k>throw</c-><c- p>;</c-></code> may be placed within a nested function invocation, the resulting chained stacktrace could either be non-contiguous, indeed self-overlapping (if it
-restarts from <code class="highlight"><c- k>throw</c-><c- p>;</c-></code>) or, if it does not restart, omit important information (the stack from the catch clause to the rethrow point, showing how and why the exception was 
-rethrown). At present, in the light of the complication and potential confusion arising, we choose not to pursue this.</p>
-   <p>An alternative approach could be to extend <code class="highlight"><c- n>throw_with_nested</c-></code> to accept a stacktrace and store it in <code class="highlight"><c- n>nested_exception</c-></code> or a derived class. Since this would be a pure library
-extension, we are not pursuing it in this paper but leave it open for future direction.</p>
-   <h3 class="heading settled" data-level="3.4" id="coroutines"><span class="secno">3.4. </span><span class="content">Coroutines</span><a class="self-link" href="#coroutines"></a></h3>
+   <p>It has been suggested that the Standard may wish to provide an attribute for users to denote that a stack frame should be omitted from stack traces.
+We consider this out of scope for this proposal.</p>
+   <h3 class="heading settled" data-level="4.3" id="rethrow"><span class="secno">4.3. </span><span class="content">Rethrow</span><a class="self-link" href="#rethrow"></a></h3>
+   <p>For a <em>rethrown</em> exception (using <code class="highlight"><c- k>throw</c-><c- p>;</c-></code>, <code class="highlight"><c- n>rethrow_exception</c-></code>, <code class="highlight"><c- n>throw_with_nested</c-></code>, etc.) the stacktrace might be truncated from the rethrow point.
+If the initial <em>try-block</em> is marked <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>(</c->false<c- p>)]]</c-></code>, this is as intended; otherwise, it would be better to use the original stacktrace or splice it (if a <code class="highlight"><c- k>throw</c-><c- p>;</c-></code> occurs in a nested function invocation).
+It may be possible to specify this, or to leave it as a quality-of-implementation concern.</p>
+   <p>It may be possible to extend <code class="highlight"><c- n>throw_with_nested</c-></code> to accept a stacktrace and store it in <code class="highlight"><c- n>nested_exception</c-></code> or a derived class.
+Since this would be a pure library extension, we are not pursuing it in this paper but leave it open for future direction.</p>
+   <h3 class="heading settled" data-level="4.4" id="coroutines"><span class="secno">4.4. </span><span class="content">Coroutines</span><a class="self-link" href="#coroutines"></a></h3>
    <p>In several places in the coroutines machinery exceptions are specified as being caught and rethrown, e.g. if the initial suspend throws (before initial <em>await-resume</em>), the exception is caught and rethrown to the coroutine caller; from this point onwards, exceptions are caught as if by <code class="highlight"><c- p>...</c-></code> and <code class="highlight"><c- n>unhandled_exception</c-></code> is called on the promise.
 This will result in stacktraces retrieved in the caller being truncated to the rethrow point, and not being available at all to <code class="highlight"><c- n>unhandled_exception</c-></code>.</p>
    <p>The issue of truncation could be addressed by special wording; implementations may be able to use automatic object cleanups (which do not interrupt a stacktrace).</p>
-   <p>By allowing the <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]</c-></code> attribute to appertain to member function declarations as well as <em>exception-declarations</em>, it could be applied to a promise type’s <code class="highlight"><c- n>unhandled_exception</c-></code> member function, thereby directing the implementation to make exception stacktrace available to that handler.</p>
-   <h3 class="heading settled" data-level="3.5" id="allocators"><span class="secno">3.5. </span><span class="content">Allocators</span><a class="self-link" href="#allocators"></a></h3>
+   <p>By allowing the <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code> attribute to appertain to member function declarations as well as <em>exception-declarations</em>, it could be applied to a promise type’s <code class="highlight"><c- n>unhandled_exception</c-></code> member function, thereby directing the implementation to make exception stacktrace available to that handler.</p>
+   <h3 class="heading settled" data-level="4.5" id="allocators"><span class="secno">4.5. </span><span class="content">Allocators</span><a class="self-link" href="#allocators"></a></h3>
    <p>Previously, we suggested that some syntaxes could permit the user to supply an allocator; this might be desirable for performance and/or latency.
 On the other hand, allowing the user to supply an allocator opens the door to abuse (running arbitrary user code during unwinding).
 Even where the user supplies an allocator, it may not necessarily be invoked at the same time as the stacktrace is captured; an implementation could capture into a separate buffer and allocate the stacktrace exposed to the user at a later time.</p>
    <p>Resource usage concerns could be addressed by accepting a <code class="highlight"><c- n>max_depth</c-></code> argument, as discussed above.</p>
-   <h2 class="heading settled" data-level="4" id="implementation-experience"><span class="secno">4. </span><span class="content">Implementation experience</span><a class="self-link" href="#implementation-experience"></a></h2>
+   <h3 class="heading settled" data-level="4.6" id="stdterminate"><span class="secno">4.6. </span><span class="content"><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code></span><a class="self-link" href="#stdterminate"></a></h3>
+   <p>It would be advantageous if a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate_handler</c-></code> were to be able to call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>()</c-></code>, to retrieve the stacktrace of the unhandled exception that caused <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>terminate</c-></code> to be called, if any, regardless of whether the stack was unwound.
+This could be resolved with appropriate wording.</p>
+   <h3 class="heading settled" data-level="4.7" id="lippincott-functions"><span class="secno">4.7. </span><span class="content">Lippincott functions</span><a class="self-link" href="#lippincott-functions"></a></h3>
+   <p>Lippincott functions <a data-link-type="biblio" href="#biblio-lippincott">[lippincott]</a> provide a pattern to translate C++ exceptions to status codes.
+For optimal performance, it would be necessary to annotate both <em>try-block</em>s with <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>(</c->false<c- p>)]]</c-></code>, to ensure that stacktraces are not taken unnecessarily.
+We note that a sufficiently smart compiler would be able to note that the Lippincott function itself does not call <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>stacktrace</c-><c- o>::</c-><c- n>from_current_exception</c-><c- p>()</c-></code>, either directly or indirectly, and that therefore exception stacktraces could be disabled for that part of the code.</p>
+   <h3 class="heading settled" data-level="4.8" id="attribute-argument"><span class="secno">4.8. </span><span class="content">Attribute argument</span><a class="self-link" href="#attribute-argument"></a></h3>
+   <p>It is unclear whether the <code class="highlight"><c- n>enabled</c-></code> argument to the attribute should be required to be a constant expression or whether a dynamic value might be allowed.
+At present, we think that a constant expression should suffice; user code that wants to dynamically switch between enabled and disabled can do so via code duplication, possibly metaprogrammed using a lambda or similar.</p>
+   <h2 class="heading settled" data-level="5" id="implementation-experience"><span class="secno">5. </span><span class="content">Implementation experience</span><a class="self-link" href="#implementation-experience"></a></h2>
    <p>The following proofs of concept and implementations are provided to demonstrate implementability.</p>
-   <h3 class="heading settled" data-level="4.1" id="windows-seh"><span class="secno">4.1. </span><span class="content">Windows (SEH)</span><a class="self-link" href="#windows-seh"></a></h3>
-   <p>It is well known that the vendor-specific <code class="highlight"><c- kr>__try</c-></code> and <code class="highlight"><c- kr>__except</c-></code> keywords <a data-link-type="biblio" href="#biblio-try-except">[try-except]</a> (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked
-during search phase, since the <em>filter-expression</em> argument to the <code class="highlight"><c- kr>__except</c-></code> keyword is a funclet evaluated during search phase, to an enumeration indicating whether the 
-consequent code block is to be selected as the handler.  We present a proof-of-concept implementation <a data-link-type="biblio" href="#biblio-poc">[poc]</a> (32-bit and 64-bit) adapted from an article by Howard Jeng <a data-link-type="biblio" href="#biblio-jeng">[jeng]</a>.</p>
-   <h3 class="heading settled" data-level="4.2" id="linux-rtti"><span class="secno">4.2. </span><span class="content">Linux (RTTI)</span><a class="self-link" href="#linux-rtti"></a></h3>
-   <p>Although exception handling on Itanium is also two-phase, the handler selection mechanism is largely hidden from the user.  However, there is a workaround involving creating a
-type whose run-time type information (that is, its <code class="highlight"><c- k>typeid</c-></code>) refers to an instance of a user-defined subclass of <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>type_info</c-></code>.  This technique is not particularly widely 
-known, but has been used 
-in several large proprietary code bases to good effect for some time.  We present a proof-of-concept implementation <a data-link-type="biblio" href="#biblio-poc">[poc]</a> and a fully working branch <a data-link-type="biblio" href="#biblio-branch-attribute">[branch-attribute]</a> of gcc implementing the 
-suggested <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code> syntax,</p>
+   <h3 class="heading settled" data-level="5.1" id="windows-seh"><span class="secno">5.1. </span><span class="content">Windows (SEH)</span><a class="self-link" href="#windows-seh"></a></h3>
+   <p>It is well known that the vendor-specific <code class="highlight"><c- kr>__try</c-></code> and <code class="highlight"><c- kr>__except</c-></code> keywords <a data-link-type="biblio" href="#biblio-try-except">[try-except]</a> (present in Visual Studio and compatible compilers) permit arbitrary code to be invoked during search phase, since the <em>filter-expression</em> argument to the <code class="highlight"><c- kr>__except</c-></code> keyword is a funclet evaluated during search phase, to an enumeration indicating whether the consequent code block is to be selected as the handler.
+We present a proof-of-concept implementation <a data-link-type="biblio" href="#biblio-poc">[poc]</a> (32-bit and 64-bit) adapted from an article by Howard Jeng <a data-link-type="biblio" href="#biblio-jeng">[jeng]</a>.</p>
+   <h3 class="heading settled" data-level="5.2" id="linux-rtti"><span class="secno">5.2. </span><span class="content">Linux (RTTI)</span><a class="self-link" href="#linux-rtti"></a></h3>
+   <p>Although exception handling on Itanium is also two-phase, the handler selection mechanism is largely hidden from the user.
+However, there is a workaround involving creating atype whose run-time type information (that is, its <code class="highlight"><c- k>typeid</c-></code>) refers to an instance of a user-defined subclass of <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>type_info</c-></code>.  
+This technique is not particularly widely known, but has been used in several large proprietary code bases to good effect for some time.
+We present a proof-of-concept implementation <a data-link-type="biblio" href="#biblio-poc">[poc]</a> and a fully working branch <a data-link-type="biblio" href="#biblio-branch-attribute">[branch-attribute]</a> of gcc implementing the suggested <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]]</c-></code> syntax, in an earlier version (appertaining to the <em>exception-declaration</em> of the handler).</p>
+   <h2 class="heading settled" data-level="6" id="acknowledgements"><span class="secno">6. </span><span class="content">Acknowledgements</span><a class="self-link" href="#acknowledgements"></a></h2>
+   <p>Thank you especially to Antony Peacock for getting this paper ready for initial submission, and to Mathias Gaunard for inspiration, review and feedback. Thank you also to Jonathan Wakely and to members of BSI IST/5/-/21 (C++) panel for review and feedback.</p>
   </main>
 <script>
 (function() {
@@ -2432,6 +2464,8 @@ suggested <code class="highlight"><c- p>[[</c-><c- n>with_stacktrace</c-><c- p>]
    <dd><a href="https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html"><cite>C++ ABI for Itanium: Exception Handling</cite></a>. URL: <a href="https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html">https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html</a>
    <dt id="biblio-jeng">[JENG]
    <dd><a href="https://www.gamedev.net/tutorials/programming/general-and-gameplay-programming/the-visual-c-exception-model-r2488/"><cite>The Visual C++ Exception Model</cite></a>. URL: <a href="https://www.gamedev.net/tutorials/programming/general-and-gameplay-programming/the-visual-c-exception-model-r2488/">https://www.gamedev.net/tutorials/programming/general-and-gameplay-programming/the-visual-c-exception-model-r2488/</a>
+   <dt id="biblio-lippincott">[LIPPINCOTT]
+   <dd><a href="http://cppsecrets.blogspot.com/2013/12/using-lippincott-function-for.html"><cite>Using a Lippincott Function for Centralized Exception Handling</cite></a>. URL: <a href="http://cppsecrets.blogspot.com/2013/12/using-lippincott-function-for.html">http://cppsecrets.blogspot.com/2013/12/using-lippincott-function-for.html</a>
    <dt id="biblio-llvm">[LLVM]
    <dd><a href="https://llvm.org/docs/ExceptionHandling.html"><cite>Exception Handling in LLVM</cite></a>. URL: <a href="https://llvm.org/docs/ExceptionHandling.html">https://llvm.org/docs/ExceptionHandling.html</a>
    <dt id="biblio-p0709">[P0709]
